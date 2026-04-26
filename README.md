@@ -100,7 +100,7 @@ Developed with ❤️ by **NureHub Studios**.
 - [Website](https://spellit.infinity.me)
 - [Support](mailto:annurdevelopers@gmail.com)
 
----
+----
 
 ## 📄 License
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
