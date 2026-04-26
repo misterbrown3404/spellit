@@ -97,8 +97,8 @@ The project includes a fully responsive premium landing page located in the `/la
 ## 👨‍💻 Built By
 Developed with ❤️ by **NureHub Studios**. 
 
-- [Website](https://nurehub.com)
-- [Support](mailto:support@nurehub.com)
+- [Website](https://spellit.infinity.me)
+- [Support](mailto:annurdevelopers@gmail.com)
 
 ---
 
