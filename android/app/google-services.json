@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "890336873900",
+    "firebase_url": "https://draw-33538-default-rtdb.firebaseio.com",
+    "project_id": "draw-33538",
+    "storage_bucket": "draw-33538.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:890336873900:android:b45a18a5af842a629f7e09",
+        "android_client_info": {
+          "package_name": "com.nurehub.spellit"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB7zbAgqW_DneJTXXp4Z5NkAF2GrirycOQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
