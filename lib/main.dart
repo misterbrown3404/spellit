@@ -6,13 +6,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:spellit/core/setting_service.dart';
+import 'package:spellit/features/auth/screens/login_screen.dart';
 import 'package:spellit/main_menu_screen.dart';
 import 'firebase_options.dart';
 import 'core/theme.dart';
 import 'core/tutorial_service.dart';
 import 'features/auth/auth_service.dart';
-import 'features/auth/screens/login_screen.dart';
 import 'features/tutorial/screens/tutorial_screen.dart';
+import 'core/audio_manager.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -51,41 +52,51 @@ class SpellItApp extends ConsumerStatefulWidget {
   ConsumerState<SpellItApp> createState() => _SpellItAppState();
 }
 
-class _SpellItAppState extends ConsumerState<SpellItApp> {
+class _SpellItAppState extends ConsumerState<SpellItApp> with WidgetsBindingObserver {
   bool _isInitialized = false;
   bool _showTutorial = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _initialize();
   }
 
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final audioManager = ref.read(audioManagerProvider);
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive) {
+      audioManager.pauseBackgroundMusic();
+    } else if (state == AppLifecycleState.resumed) {
+      audioManager.resumeBackgroundMusic();
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
   Future<void> _initialize() async {
-    // Load settings
     final settingsService = ref.read(settingsServiceProvider);
     await settingsService.init();
 
-    // Initialize Notifications
-  
-    
     if (settingsService.isDarkMode) {
       ref.read(themeProvider.notifier).state = ThemeMode.dark;
     } else {
       ref.read(themeProvider.notifier).state = ThemeMode.light;
     }
 
-    // Check tutorial status
     final tutorialService = ref.read(tutorialServiceProvider);
     await tutorialService.init();
-    
+
     setState(() {
       _showTutorial = !tutorialService.isTutorialCompleted;
       _isInitialized = true;
     });
-
-    // Save FCM Token if user is logged in
-    
   }
 
   void _onTutorialComplete() {

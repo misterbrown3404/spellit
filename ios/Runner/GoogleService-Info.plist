@@ -28,5 +28,9 @@
 	<string>1:890336873900:ios:ebf576817966bd449f7e09</string>
 	<key>DATABASE_URL</key>
 	<string>https://draw-33538-default-rtdb.firebaseio.com</string>
+	<key>CLIENT_ID</key>
+	<string>890336873900-hanbk8umc96h7rb8slj18vfun6odm7gn.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.890336873900-hanbk8umc96h7rb8slj18vfun6odm7gn</string>
 </dict>
 </plist>

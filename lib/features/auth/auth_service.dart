@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import '../../models/player_model.dart';
 
 final authServiceProvider = Provider((ref) => AuthService());
@@ -96,6 +97,39 @@ class AuthService {
       return credential;
     } catch (e) {
       throw Exception('Failed to sign in as guest');
+    }
+  }
+
+  // Google Sign In
+  Future<UserCredential?> signInWithGoogle() async {
+    try {
+      final GoogleSignIn googleSignIn = GoogleSignIn();
+      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
+      if (googleUser == null) return null;
+
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
+
+      final AuthCredential credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      final userCredential =
+          await _auth.signInWithCredential(credential);
+
+      if (userCredential.user != null) {
+        await _ensureUserDocument(
+          userCredential.user!,
+          googleUser.displayName ?? 'Player',
+        );
+      }
+
+      return userCredential;
+    } on FirebaseAuthException catch (e) {
+      throw Exception(_handleAuthException(e));
+    } catch (e) {
+      throw Exception('Failed to sign in with Google: ${e.toString()}');
     }
   }
 

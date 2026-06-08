@@ -1,0 +1,28 @@
+{
+  "name": "spellit",
+  "version": "1.0.0",
+  "description": "<p align=\"center\">   <img src=\"landing_page/favicon.png\" width=\"100\" alt=\"SpellIt Logo\" style=\"border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);\"> </p>",
+  "main": "index.js",
+  "directories": {
+    "lib": "lib",
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/misterbrown3404/spellit.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/misterbrown3404/spellit/issues"
+  },
+  "homepage": "https://github.com/misterbrown3404/spellit#readme",
+  "dependencies": {
+    "puppeteer": "^25.1.0"
+  }
+}

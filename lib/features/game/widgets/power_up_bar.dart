@@ -58,6 +58,12 @@ class PowerUpBar extends StatelessWidget {
             color: Colors.red,
             count: inventory['bomb'] ?? 0,
           ),
+          _buildPowerUpButton(
+            context: context,
+            type: PowerUpType.shield,
+            icon: Icons.shield, 
+            color: Colors.blueGrey, 
+            count: inventory['shield'] ?? 0),
         ],
       ),
     );

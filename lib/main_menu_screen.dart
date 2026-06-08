@@ -81,10 +81,10 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen>
             child: const Text('Later'),
           ),
           FilledButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _navigateTo(const DailyRewardScreen());
-            },
+                  onPressed: () {
+                    Navigator.pop(context);
+                    _navigateTo(const DailyRewardScreen());
+                  },
             child: const Text('Claim Now'),
           ),
         ],

@@ -285,7 +285,7 @@ class _MultiplayerGameScreenState extends ConsumerState<MultiplayerGameScreen>
     if (_currentRoom == null) return;
 
     final minLength = _currentRoom!.wordLengthMin;
-    if (currentWord.length >= minLength) {
+    if (currentWord.length == minLength) {
       final dictionaryService = ref.read(dictionaryServiceProvider);
       final user = ref.read(authStateProvider).value;
 
