@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:spellit/features/chat/screens/chat_screen.dart';
+import 'package:spellit/features/auth/auth_service.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:spellit/features/game/screens/multiplayer_game_screen.dart';
@@ -118,12 +120,21 @@ class _WaitingRoomScreenState extends ConsumerState<WaitingRoomScreen> {
                           icon: const Icon(Icons.copy),
                           onPressed: () {
                             Clipboard.setData(ClipboardData(text: room.roomCode));
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Room code copied!'),
-                                duration: Duration(seconds: 1),
-                              ),
-                            );
+                            final inviteText = room.isPublic
+                                ? 'Join my public SpellIt game! Room code: ${room.roomCode}'
+                                : 'Join my private SpellIt game! Room code: ${room.roomCode}';
+                            final initialTab = room.isPublic ? 0 : 1;
+                            if (mounted) {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => ChatScreen(
+                                    initialMessage: inviteText,
+                                    initialTab: initialTab,
+                                  ),
+                                ),
+                              );
+                            }
                           },
                         ),
                       ],

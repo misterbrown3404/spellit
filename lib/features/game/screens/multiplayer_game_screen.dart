@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:spellit/core/notification_service.dart';
 import 'package:spellit/main.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -588,6 +589,23 @@ class _MultiplayerGameScreenState extends ConsumerState<MultiplayerGameScreen>
 
   void _showGameResults(RoomModel room) {
     _updatePlayerStats(room);
+
+    final user = ref.read(authStateProvider).value;
+    if (user != null) {
+      final myScore = room.scores[user.uid] ?? 0;
+      ref.read(analyticsProvider).logEvent(
+        name: 'game_end',
+        parameters: {
+          'mode': 'multiplayer',
+          'score': myScore,
+          'result': myScore >= room.scores.values.reduce((a, b) => a > b ? a : b) ? 'win' : 'loss',
+        },
+      );
+
+      final notificationService = ref.read(notificationServiceProvider);
+      notificationService.sendGameStartNotification(user.uid, room.roomCode);
+    }
+
     ref.read(audioManagerProvider).stopBackgroundMusic();
 
     // Determine winner
@@ -600,13 +618,13 @@ class _MultiplayerGameScreenState extends ConsumerState<MultiplayerGameScreen>
       }
     });
 
-    final user = ref.read(authStateProvider).value;
-    final isWinner = winnerId == user?.uid;
+    final currentUser = ref.read(authStateProvider).value;
+    final isWinner = winnerId == currentUser?.uid;
 
     // Track game end
-    if (user != null) {
-      final myScore = room.scores[user.uid] ?? 0;
-      final opponentId = room.playerIds.firstWhere((id) => id != user.uid, orElse: () => "");
+    if (currentUser != null) {
+      final myScore = room.scores[currentUser.uid] ?? 0;
+      final opponentId = room.playerIds.firstWhere((id) => id != currentUser.uid, orElse: () => "");
       final opponentScore = room.scores[opponentId] ?? 0;
       
       ref.read(analyticsProvider).logEvent(
@@ -649,7 +667,7 @@ class _MultiplayerGameScreenState extends ConsumerState<MultiplayerGameScreen>
             ),
             const SizedBox(height: 16),
             ...room.scores.entries.map((entry) {
-              final isCurrentPlayer = entry.key == user?.uid;
+              final isCurrentPlayer = entry.key == currentUser?.uid;
               final isWinnerPlayer = entry.key == winnerId;
               return FutureBuilder<DocumentSnapshot>(
                 future: FirebaseFirestore.instance
@@ -797,6 +815,7 @@ class _MultiplayerGameScreenState extends ConsumerState<MultiplayerGameScreen>
               onPowerUpTap: _usePowerUp,
               isEnabled: !isFrozen,
             ),
+
 
             // Action buttons
             Padding(

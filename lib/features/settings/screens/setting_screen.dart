@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:spellit/core/setting_service.dart';
 import 'package:spellit/core/tutorial_service.dart';
 import 'package:spellit/features/tutorial/screens/tutorial_screen.dart';

@@ -22,6 +22,7 @@ class RoomModel {
   final DateTime createdAt;
   final DateTime? gameStartedAt;
   final Map<String, dynamic> activeEffects; // Power-up effects
+  final bool isPublic; // Whether the room shows up in the public list
 
   RoomModel({
     required this.roomId,
@@ -42,6 +43,7 @@ class RoomModel {
     required this.createdAt,
     this.gameStartedAt,
     this.activeEffects = const {},
+    this.isPublic = true,
   });
 
   factory RoomModel.fromFirestore(DocumentSnapshot doc) {
@@ -73,6 +75,7 @@ class RoomModel {
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       gameStartedAt: (data['gameStartedAt'] as Timestamp?)?.toDate(),
       activeEffects: Map<String, dynamic>.from(data['activeEffects'] ?? {}),
+      isPublic: data['isPublic'] ?? true,
     );
   }
 
@@ -95,6 +98,7 @@ class RoomModel {
       'createdAt': Timestamp.fromDate(createdAt),
       'gameStartedAt': gameStartedAt != null ? Timestamp.fromDate(gameStartedAt!) : null,
       'activeEffects': activeEffects,
+      'isPublic': isPublic,
     };
   }
 }

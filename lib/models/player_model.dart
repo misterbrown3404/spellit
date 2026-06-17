@@ -14,6 +14,10 @@ class PlayerModel {
   final int longestStreak;
   final DateTime lastLoginDate;
   final Map<String, int> inventory; // { 'freeze': 2, 'reveal': 1, 'shuffle': 3 }
+  final Map<String, int> achievementProgress;
+  final List<String> unlockedAchievements;
+  final int totalWordsFound;
+  final int highestSingleGameScore;
 
   PlayerModel({
     required this.odid,
@@ -29,6 +33,10 @@ class PlayerModel {
     this.longestStreak = 0,
     required this.lastLoginDate,
     this.inventory = const {'freeze': 0, 'reveal': 0, 'shuffle': 1},
+    this.achievementProgress = const {},
+    this.unlockedAchievements = const [],
+    this.totalWordsFound = 0,
+    this.highestSingleGameScore = 0,
   });
 
   factory PlayerModel.fromFirestore(DocumentSnapshot doc) {
@@ -47,6 +55,10 @@ class PlayerModel {
       longestStreak: data['longestStreak'] ?? 0,
       lastLoginDate: (data['lastLoginDate'] as Timestamp?)?.toDate() ?? DateTime.now(),
       inventory: Map<String, int>.from(data['inventory'] ?? {}),
+      achievementProgress: Map<String, int>.from(data['achievementProgress'] ?? {}),
+      unlockedAchievements: List<String>.from(data['unlockedAchievements'] ?? []),
+      totalWordsFound: data['totalWordsFound'] ?? 0,
+      highestSingleGameScore: data['highestSingleGameScore'] ?? 0,
     );
   }
 
@@ -64,6 +76,10 @@ class PlayerModel {
       'longestStreak': longestStreak,
       'lastLoginDate': Timestamp.fromDate(lastLoginDate),
       'inventory': inventory,
+      'achievementProgress': achievementProgress,
+      'unlockedAchievements': unlockedAchievements,
+      'totalWordsFound': totalWordsFound,
+      'highestSingleGameScore': highestSingleGameScore,
     };
   }
 
@@ -78,6 +94,10 @@ class PlayerModel {
     int? longestStreak,
     DateTime? lastLoginDate,
     Map<String, int>? inventory,
+    Map<String, int>? achievementProgress,
+    List<String>? unlockedAchievements,
+    int? totalWordsFound,
+    int? highestSingleGameScore,
   }) {
     return PlayerModel(
       odid: odid,
@@ -93,6 +113,10 @@ class PlayerModel {
       longestStreak: longestStreak ?? this.longestStreak,
       lastLoginDate: lastLoginDate ?? this.lastLoginDate,
       inventory: inventory ?? this.inventory,
+      achievementProgress: achievementProgress ?? this.achievementProgress,
+      unlockedAchievements: unlockedAchievements ?? this.unlockedAchievements,
+      totalWordsFound: totalWordsFound ?? this.totalWordsFound,
+      highestSingleGameScore: highestSingleGameScore ?? this.highestSingleGameScore,
     );
   }
 }

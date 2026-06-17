@@ -26,6 +26,7 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> with SingleTickerProv
   int _maxPlayers = 4;
   int _totalRounds = 3;
   GameMode _gameMode = GameMode.classic;
+  bool _isPublic = true;
 
   @override
   void initState() {
@@ -55,6 +56,7 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> with SingleTickerProv
         timeLimit: _timeLimit,
         totalRounds: _totalRounds,
         gameMode: _gameMode,
+        isPublic: _isPublic,
       );
 
       if (mounted) {
@@ -248,6 +250,24 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> with SingleTickerProv
             },
           ).animate().fadeIn(delay: 400.ms).slideX(begin: -0.1),
           
+          const SizedBox(height: 16),
+          
+          // Public / Private Toggle
+          SwitchListTile(
+            title: Text(
+              'Public Room',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            subtitle: const Text('Allow anyone to join from the lobby'),
+            value: _isPublic,
+            onChanged: (value) {
+              setState(() => _isPublic = value);
+            },
+            contentPadding: EdgeInsets.zero,
+          ).animate().fadeIn(delay: 450.ms).slideX(begin: -0.1),
+          
           const SizedBox(height: 32),
           
           // Create Button
@@ -274,97 +294,106 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> with SingleTickerProv
   }
 
   Widget _buildJoinRoomTab() {
-    return Padding(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        children: [
-          const SizedBox(height: 40),
-          
-          Icon(
-            Icons.meeting_room_outlined,
-            size: 80,
-            color: Theme.of(context).colorScheme.primary.withOpacity(0.5),
-          ).animate().scale(),
-          
-          const SizedBox(height: 24),
-          
-          Text(
-            'Enter Room Code',
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
-          
-          const SizedBox(height: 8),
-          
-          Text(
-            'Ask the host for their 6-character code',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Colors.grey,
-            ),
-          ),
-          
-          const SizedBox(height: 32),
-          
-          // Room Code Input
-          TextField(
-            controller: _roomCodeController,
-            textAlign: TextAlign.center,
-            textCapitalization: TextCapitalization.characters,
-            maxLength: 6,
-            style: const TextStyle(
-              fontSize: 32,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 8,
-            ),
-            decoration: InputDecoration(
-              counterText: '',
-              hintText: '_ _ _ _ _ _',
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
+    return CustomScrollView(
+      slivers: [
+        SliverPadding(
+          padding: const EdgeInsets.all(20),
+          sliver: SliverList(
+            delegate: SliverChildListDelegate([
+              const SizedBox(height: 40),
+              
+              Icon(
+                Icons.meeting_room_outlined,
+                size: 80,
+                color: Theme.of(context).colorScheme.primary.withOpacity(0.5),
+              ).animate().scale(),
+              
+              const SizedBox(height: 24),
+              
+              Text(
+                'Enter Room Code',
+                style: Theme.of(context).textTheme.headlineSmall,
+                textAlign: TextAlign.center,
               ),
-            ),
-            inputFormatters: [
-              FilteringTextInputFormatter.allow(RegExp('[A-Za-z0-9]')),
-              UpperCaseTextFormatter(),
-            ],
-          ).animate().fadeIn().slideY(begin: 0.2),
-          
-          const SizedBox(height: 32),
-          
-          // Join Button
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              onPressed: _isLoading ? null : _joinRoom,
-              icon: _isLoading
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.login),
-              label: const Text('Join Room'),
-              style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
+              
+              const SizedBox(height: 8),
+              
+              Text(
+                'Ask the host for their 6-character code',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Colors.grey,
+                ),
+                textAlign: TextAlign.center,
               ),
-            ),
+              
+              const SizedBox(height: 32),
+              
+              // Room Code Input
+              TextField(
+                controller: _roomCodeController,
+                textAlign: TextAlign.center,
+                textCapitalization: TextCapitalization.characters,
+                maxLength: 6,
+                style: const TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 8,
+                ),
+                decoration: InputDecoration(
+                  counterText: '',
+                  hintText: '_ _ _ _ _ _',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp('[A-Za-z0-9]')),
+                  UpperCaseTextFormatter(),
+                ],
+              ).animate().fadeIn().slideY(begin: 0.2),
+              
+              const SizedBox(height: 32),
+              
+              // Join Button
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: _isLoading ? null : _joinRoom,
+                  icon: _isLoading
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.login),
+                  label: const Text('Join Room'),
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  ),
+                ),
+              ),
+              
+              const SizedBox(height: 48), // Replace Spacer
+              
+              // Public Rooms Section
+              Text(
+                'Or join a public room',
+                style: Theme.of(context).textTheme.titleMedium,
+                textAlign: TextAlign.center,
+              ),
+              
+              const SizedBox(height: 16),
+            ]),
           ),
-          
-          const Spacer(),
-          
-          // Public Rooms Section
-          Text(
-            'Or join a public room',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          
-          const SizedBox(height: 16),
-          
-          Expanded(
-            flex: 2,
+        ),
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+          sliver: SliverFillRemaining(
+            hasScrollBody: true,
             child: _buildPublicRoomsList(),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 

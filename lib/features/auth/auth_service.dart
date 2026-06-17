@@ -1,8 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import '../../models/player_model.dart';
+import '../../core/achievement_service.dart';
 
 final authServiceProvider = Provider((ref) => AuthService());
 
@@ -54,6 +57,7 @@ class AuthService {
 
       if (credential.user != null) {
         await _ensureUserDocument(credential.user!, displayName);
+        await _saveFCMToken(credential.user!.uid);
       }
 
       return credential;
@@ -77,6 +81,7 @@ class AuthService {
       if (credential.user != null) {
         await _ensureUserDocument(credential.user!, credential.user!.displayName ?? 'Player');
         await _updateDailyStreak(credential.user!.uid);
+        await _saveFCMToken(credential.user!.uid);
       }
 
       return credential;
@@ -92,6 +97,7 @@ class AuthService {
       
       if (credential.user != null) {
         await _ensureUserDocument(credential.user!, 'Guest_${credential.user!.uid.substring(0, 5)}');
+        await _saveFCMToken(credential.user!.uid);
       }
 
       return credential;
@@ -123,6 +129,7 @@ class AuthService {
           userCredential.user!,
           googleUser.displayName ?? 'Player',
         );
+        await _saveFCMToken(userCredential.user!.uid);
       }
 
       return userCredential;
@@ -150,10 +157,7 @@ class AuthService {
           displayName: displayName,
           email: user.email ?? '',
           lastLoginDate: DateTime.now(),
-          coins: 100,
-          eloRating: 1000,
         );
-
         await userDoc.set(newPlayer.toFirestore());
         print('Created new user document for ${user.uid}');
       } else {
@@ -184,6 +188,19 @@ class AuthService {
     }
   }
 
+  Future<void> _saveFCMToken(String uid) async {
+  try {
+    final token = await FirebaseMessaging.instance.getToken();
+    if (token != null) {
+      await _firestore.collection('users').doc(uid).set({
+        'fcmToken': token,
+      }, SetOptions(merge: true));
+    }
+  } catch (e) {
+    debugPrint('Failed to save FCM token: $e');
+  }
+}
+
   // Update daily streak
   Future<void> _updateDailyStreak(String odid) async {
     try {
@@ -203,15 +220,12 @@ class AuthService {
           final difference = now.difference(lastLogin).inDays;
           
           if (difference == 1) {
-            // Consecutive day login
             currentStreak++;
             coinsToAdd = _getStreakBonus(currentStreak);
           } else if (difference > 1) {
-            // Streak broken
             currentStreak = 1;
-            coinsToAdd = 10; // Base daily login bonus
+            coinsToAdd = 10;
           } else if (difference == 0) {
-            // Same day login, no bonus
             return;
           }
         } else {
@@ -229,10 +243,24 @@ class AuthService {
           'longestStreak': longestStreak,
           'coins': FieldValue.increment(coinsToAdd),
         });
+
+        if (currentStreak == 7 || currentStreak == 30) {
+          await AchievementService().checkAndGrantAchievements(
+            odid,
+            PlayerModel(
+              odid: odid,
+              displayName: data['displayName'] ?? 'Player',
+              email: data['email'] ?? '',
+              currentStreak: currentStreak,
+              longestStreak: longestStreak,
+              lastLoginDate: now,
+            ),
+          );
+        }
       }
     } on FirebaseException catch (e) {
       if (e.code == 'unavailable') {
-        print('Firestore unavailable during streak update. Cached data will be synced later.');
+        debugPrint('Firestore unavailable during streak update.');
       } else {
         rethrow;
       }

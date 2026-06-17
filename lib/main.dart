@@ -14,6 +14,7 @@ import 'core/tutorial_service.dart';
 import 'features/auth/auth_service.dart';
 import 'features/tutorial/screens/tutorial_screen.dart';
 import 'core/audio_manager.dart';
+import 'core/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -92,6 +93,9 @@ class _SpellItAppState extends ConsumerState<SpellItApp> with WidgetsBindingObse
 
     final tutorialService = ref.read(tutorialServiceProvider);
     await tutorialService.init();
+
+    final notificationService = ref.read(notificationServiceProvider);
+    await notificationService.init();
 
     setState(() {
       _showTutorial = !tutorialService.isTutorialCompleted;

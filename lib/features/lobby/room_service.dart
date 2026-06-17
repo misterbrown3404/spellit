@@ -1,4 +1,3 @@
-
 import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -56,6 +55,7 @@ class RoomService {
     int timeLimit = 120,
     int totalRounds = 3,
     GameMode gameMode = GameMode.classic,
+    bool isPublic = true,
   }) async {
     final roomCode = _generateRoomCode();
     final roomId = _roomsRef.doc().id;
@@ -77,6 +77,7 @@ class RoomService {
       totalRounds: totalRounds,
       gridLetters: gridLetters,
       createdAt: DateTime.now(),
+      isPublic: isPublic,
     );
 
     await _roomsRef.doc(roomId).set(room.toFirestore());
@@ -89,18 +90,22 @@ class RoomService {
     required String roomCode,
     required String playerId,
   }) async {
+    final normalized = roomCode.trim().toUpperCase();
     final query = await _roomsRef
-        .where('roomCode', isEqualTo: roomCode.toUpperCase())
-        .where('status', isEqualTo: 'waiting')
+        .where('roomCode', isEqualTo: normalized)
         .limit(1)
         .get();
 
     if (query.docs.isEmpty) {
-      throw Exception('Room not found or game already started');
+      throw Exception('Room not found');
     }
 
     final roomDoc = query.docs.first;
     final room = RoomModel.fromFirestore(roomDoc);
+
+    if (room.status != RoomStatus.waiting) {
+      throw Exception('Game already started');
+    }
 
     if (room.playerIds.length >= room.maxPlayers) {
       throw Exception('Room is full');
@@ -217,6 +222,7 @@ class RoomService {
   Stream<List<RoomModel>> getPublicRooms() {
     return _roomsRef
         .where('status', isEqualTo: 'waiting')
+        .where('isPublic', isEqualTo: true)
         .orderBy('createdAt', descending: true)
         .limit(20)
         .snapshots()

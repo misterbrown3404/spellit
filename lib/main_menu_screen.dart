@@ -4,6 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:spellit/core/setting_service.dart';
 import 'package:spellit/features/auth/auth_service.dart';
 import 'package:spellit/features/daily/screens/daily_reward_screen.dart';
+import 'package:spellit/features/chat/screens/chat_screen.dart';
 import 'package:spellit/features/game/screens/solo_game_screen.dart';
 import 'package:spellit/features/leaderboard/screens/leaderboard_screen.dart';
 import 'package:spellit/features/lobby/screens/lobby_screen.dart';
@@ -561,6 +562,11 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen>
             onTap: () => _navigateTo(const LeaderboardScreen()),
           ),
           _buildNavButton(
+            icon: Icons.chat_bubble,
+            label: 'Chat',
+            onTap: () => _navigateTo(const ChatScreen()),
+          ),
+          _buildNavButton(
             icon: Icons.person,
             label: 'Profile',
             onTap: () => _navigateTo(const ProfileScreen()),
@@ -575,24 +581,30 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen>
     required String label,
     required VoidCallback onTap,
   }) {
-    return InkWell(
-      onTap: () {
-        ref.read(audioManagerProvider).playSfx(SoundEffect.buttonClick);
-        onTap();
-      },
-      borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 28),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: const TextStyle(fontSize: 12),
-            ),
-          ],
+    return Expanded(
+      child: InkWell(
+        onTap: () {
+          ref.read(audioManagerProvider).playSfx(SoundEffect.buttonClick);
+          onTap();
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 2),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 28),
+              const SizedBox(height: 4),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  label,
+                  style: const TextStyle(fontSize: 12),
+                  maxLines: 1,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
