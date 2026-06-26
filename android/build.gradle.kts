@@ -17,9 +17,12 @@ rootProject.layout.buildDirectory.value(newBuildDir)
 subprojects {
     val newSubprojectBuildDir: Directory = newBuildDir.dir(project.name)
     project.layout.buildDirectory.value(newSubprojectBuildDir)
-}
-subprojects {
-    project.evaluationDependsOn(":app")
+
+    project.pluginManager.withPlugin("com.android.library") {
+        if (!project.pluginManager.hasPlugin("kotlin-android")) {
+            project.pluginManager.apply("kotlin-android")
+        }
+    }
 }
 
 tasks.register("clean", Delete::class) {

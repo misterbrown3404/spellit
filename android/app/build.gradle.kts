@@ -11,7 +11,8 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
-val keystorePropertiesFile = rootProject.file("key.properties")
+val flutterRoot = rootProject.projectDir.parentFile
+val keystorePropertiesFile = flutterRoot.resolve("key.properties")
 val keystoreProperties = Properties()
 if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(FileInputStream(keystorePropertiesFile))
@@ -20,9 +21,10 @@ if (keystorePropertiesFile.exists()) {
 android {
     namespace = "com.nurehub.spellit"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    ndkVersion = "27.2.12479018"
 
     compileOptions {
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
@@ -46,7 +48,7 @@ android {
         create("release") {
             keyAlias = keystoreProperties["keyAlias"] as String?
             keyPassword = keystoreProperties["keyPassword"] as String?
-            storeFile = keystoreProperties["storeFile"]?.let { file(it) }
+            storeFile = flutterRoot.resolve("${keystoreProperties["storeFile"]}")
             storePassword = keystoreProperties["storePassword"] as String?
         }
     }
@@ -55,10 +57,24 @@ android {
         release {
             signingConfig = signingConfigs.getByName("release")
         }
+        debug {
+            packaging {
+                jniLibs {
+                    doNotStrip("**/*.so")
+                }
+            }
+        }
     }
 }
 
 flutter {
     source = "../.."
+}
+// Source - https://stackoverflow.com/a/79571537
+// Posted by Jhaymes
+// Retrieved 2026-06-23, License - CC BY-SA 4.0
+
+dependencies{
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }
 
