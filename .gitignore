@@ -48,6 +48,8 @@ app.*.map.json
 android/app/google-services.json
 ios/Runner/GoogleService-Info.plist
 android/key.properties
+key.properties
+upload_certificate.pem
 android/app/*.jks
 android/app/*.keystore
 *.jks

@@ -7,7 +7,9 @@ final roomServiceProvider = Provider((ref) => RoomService());
 
 class RoomService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final CollectionReference _roomsRef = FirebaseFirestore.instance.collection('rooms');
+  final CollectionReference _roomsRef = FirebaseFirestore.instance.collection(
+    'rooms',
+  );
 
   // Generate unique room code — 8 chars gives ~2.8 trillion combos,
   // making collisions astronomically rare without a server round-trip.
@@ -24,25 +26,25 @@ class RoomService {
     const vowels = 'AEIOU';
     const consonants = 'BCDFGHJKLMNPQRSTVWXYZ';
     Random rnd = Random();
-    
+
     int totalCells = size * size;
     int vowelCount = (totalCells * 0.35).round(); // ~35% vowels for playability
-    
+
     List<String> grid = [];
-    
+
     // Add vowels
     for (int i = 0; i < vowelCount; i++) {
       grid.add(vowels[rnd.nextInt(vowels.length)]);
     }
-    
+
     // Add consonants
     for (int i = vowelCount; i < totalCells; i++) {
       grid.add(consonants[rnd.nextInt(consonants.length)]);
     }
-    
+
     // Shuffle the grid
     grid.shuffle(rnd);
-    
+
     return grid;
   }
 
@@ -81,7 +83,7 @@ class RoomService {
     );
 
     await _roomsRef.doc(roomId).set(room.toFirestore());
-    
+
     return room;
   }
 
@@ -135,7 +137,7 @@ class RoomService {
     if (!snapshot.exists) return;
 
     final room = RoomModel.fromFirestore(snapshot);
-    
+
     if (room.hostId == playerId) {
       // Host leaving - delete room or transfer ownership
       if (room.playerIds.length <= 1) {
@@ -170,11 +172,11 @@ class RoomService {
     required int score,
   }) async {
     final roomDoc = _roomsRef.doc(roomId);
-    
+
     return await _firestore.runTransaction((transaction) async {
       final snapshot = await transaction.get(roomDoc);
       final room = RoomModel.fromFirestore(snapshot);
-      
+
       // Check if word already found by any player
       for (var words in room.wordsFound.values) {
         if (words.contains(word.toUpperCase())) {
@@ -200,7 +202,7 @@ class RoomService {
     required int duration,
   }) async {
     final endTime = DateTime.now().add(Duration(seconds: duration));
-    
+
     await _roomsRef.doc(roomId).update({
       'activeEffects.$targetPlayerId': {
         'type': powerUpType,
@@ -226,23 +228,24 @@ class RoomService {
         .orderBy('createdAt', descending: true)
         .limit(20)
         .snapshots()
-        .map((snapshot) =>
-            snapshot.docs.map((doc) => RoomModel.fromFirestore(doc)).toList());
+        .map(
+          (snapshot) =>
+              snapshot.docs.map((doc) => RoomModel.fromFirestore(doc)).toList(),
+        );
   }
 
-  // End game and calculate results
   Future<void> endGame(String roomId) async {
     final roomDoc = _roomsRef.doc(roomId);
     final snapshot = await roomDoc.get();
-    
+
     if (!snapshot.exists) return;
-    
+
     final room = RoomModel.fromFirestore(snapshot);
-    
+
     // Determine winner
     String? winnerId;
     int highestScore = 0;
-    
+
     for (var entry in room.scores.entries) {
       if (entry.value > highestScore) {
         highestScore = entry.value;
@@ -252,13 +255,16 @@ class RoomService {
 
     await roomDoc.update({
       'status': 'finished',
+      'winnerId': winnerId, // ← now used
+      'highestScore': highestScore, // ← now used
+      'finishedAt': FieldValue.serverTimestamp(),
     });
   }
 
   // New round with fresh grid
   Future<void> startNewRound(String roomId) async {
     final newGrid = _generateBalancedGrid(7);
-    
+
     await _roomsRef.doc(roomId).update({
       'gridLetters': newGrid,
       'currentRound': FieldValue.increment(1),

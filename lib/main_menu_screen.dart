@@ -31,7 +31,7 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen>
       vsync: this,
       duration: const Duration(seconds: 10),
     )..repeat();
-    
+
     _initAudio();
     _checkDailyReward();
   }
@@ -39,25 +39,25 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen>
   Future<void> _initAudio() async {
     final settingsService = ref.read(settingsServiceProvider);
     await settingsService.init();
-    
+
     if (settingsService.isMusicEnabled) {
       ref.read(audioManagerProvider).playMenuMusic();
     }
   }
 
   Future<void> _checkDailyReward() async {
-    // Check if user needs to claim daily reward
     await Future.delayed(const Duration(milliseconds: 500));
-    
+
     final player = ref.read(currentPlayerProvider).value;
     if (player != null) {
       final now = DateTime.now();
       final lastLogin = player.lastLoginDate;
-      
-      final isNewDay = lastLogin.year != now.year ||
+
+      final isNewDay =
+          lastLogin.year != now.year ||
           lastLogin.month != now.month ||
           lastLogin.day != now.day;
-      
+
       if (isNewDay && mounted) {
         _showDailyRewardPrompt();
       }
@@ -68,11 +68,11 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen>
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Row(
+        title: const Row(
           children: [
-            const Icon(Icons.card_giftcard, color: Colors.amber),
-            const SizedBox(width: 8),
-            const Text('Daily Reward!'),
+            Icon(Icons.card_giftcard, color: Colors.amber),
+            SizedBox(width: 8),
+            Text('Daily Reward!'),
           ],
         ),
         content: const Text('Your daily reward is ready to claim!'),
@@ -82,10 +82,10 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen>
             child: const Text('Later'),
           ),
           FilledButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    _navigateTo(const DailyRewardScreen());
-                  },
+            onPressed: () {
+              Navigator.pop(context);
+              _navigateTo(const DailyRewardScreen());
+            },
             child: const Text('Claim Now'),
           ),
         ],
@@ -100,10 +100,7 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen>
   }
 
   Future<void> _navigateTo(Widget screen) async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => screen),
-    );
+    await Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
     if (mounted) {
       _initAudio();
     }
@@ -115,16 +112,15 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen>
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      extendBody: true,
       appBar: AppBar(
         automaticallyImplyLeading: false,
         flexibleSpace: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
-             colors: [
-              colorScheme.primary,
-              colorScheme.primary.withOpacity(0.8),
-            ],
+              colors: [
+                colorScheme.primary,
+                colorScheme.primary.withValues(alpha: 0.8),
+              ],
             ),
           ),
         ),
@@ -153,36 +149,37 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen>
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              Theme.of(context).colorScheme.primary.withOpacity(0.1),
-              Theme.of(context).colorScheme.secondary.withOpacity(0.1),
+              colorScheme.primary.withValues(alpha: 0.07),
+              colorScheme.secondary.withValues(alpha: 0.07),
             ],
           ),
         ),
         child: SafeArea(
-          top: false,
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Column(
               children: [
+                const SizedBox(height: 12),
+
                 // Header with player info
                 _buildHeader(player),
 
-                const SizedBox(height: 32),
+                const SizedBox(height: 20),
 
                 // Logo and title
                 _buildLogo(),
 
-                const SizedBox(height: 48),
+                const SizedBox(height: 28),
 
                 // Main menu buttons
                 _buildMenuButtons(),
 
-                const SizedBox(height: 48),
+                const Spacer(),
 
                 // Bottom navigation
                 _buildBottomNav(),
-                
-                const SizedBox(height: 100), // Account for floating nav and bottom padding
+
+                const SizedBox(height: 16),
               ],
             ),
           ),
@@ -194,7 +191,6 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen>
   Widget _buildHeader(AsyncValue player) {
     return Row(
       children: [
-        // Player info
         player.when(
           data: (p) => p != null
               ? GestureDetector(
@@ -202,6 +198,7 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen>
                   child: Row(
                     children: [
                       CircleAvatar(
+                        radius: 20,
                         backgroundColor: Theme.of(context).colorScheme.primary,
                         child: Text(
                           p.displayName.isNotEmpty
@@ -213,22 +210,25 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen>
                           ),
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: 10),
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             p.displayName,
-                            style: const TextStyle(fontWeight: FontWeight.bold),
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
                           ),
                           Row(
                             children: [
                               Icon(
                                 Icons.stars,
-                                size: 14,
+                                size: 13,
                                 color: Colors.amber.shade700,
                               ),
-                              const SizedBox(width: 4),
+                              const SizedBox(width: 3),
                               Text(
                                 '${p.eloRating}',
                                 style: TextStyle(
@@ -250,69 +250,24 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen>
 
         const Spacer(),
 
-        // Currency display
         player.when(
           data: (p) => p != null
               ? Row(
                   children: [
-                    // Coins
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.amber.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.monetization_on,
-                            color: Colors.amber,
-                            size: 18,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            '${p.coins}',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
+                    _buildChip(
+                      icon: Icons.monetization_on,
+                      label: '${p.coins}',
+                      color: Colors.amber,
+                      bgColor: Colors.amber.withValues(alpha: 0.15),
                     ),
                     const SizedBox(width: 8),
-                    // Streak
                     GestureDetector(
                       onTap: () => _navigateTo(const DailyRewardScreen()),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.orange.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              Icons.local_fire_department,
-                              color: Colors.orange,
-                              size: 18,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              '${p.currentStreak}',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
+                      child: _buildChip(
+                        icon: Icons.local_fire_department,
+                        label: '${p.currentStreak}',
+                        color: Colors.orange,
+                        bgColor: Colors.orange.withValues(alpha: 0.15),
                       ),
                     ),
                   ],
@@ -325,68 +280,95 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen>
     ).animate().fadeIn().slideY(begin: -0.2);
   }
 
+  Widget _buildChip({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required Color bgColor,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: color, size: 16),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildLogo() {
-    return Column(
+    return Row(
       children: [
-        // Animated logo
+        // Compact animated logo
         Container(
-          width: 120,
-          height: 120,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Theme.of(context).colorScheme.primary,
-                Theme.of(context).colorScheme.secondary,
-              ],
-            ),
-            borderRadius: BorderRadius.circular(30),
-            boxShadow: [
-              BoxShadow(
-                color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
-                blurRadius: 20,
-                spreadRadius: 5,
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Theme.of(context).colorScheme.primary,
+                    Theme.of(context).colorScheme.secondary,
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.primary.withValues(alpha: 0.3),
+                    blurRadius: 14,
+                    spreadRadius: 2,
+                  ),
+                ],
               ),
-            ],
-          ),
-          child: const Icon(
-            Icons.grid_view_rounded,
-            size: 64,
-            color: Colors.white,
-          ),
-        )
+              child: const Icon(
+                Icons.grid_view_rounded,
+                size: 38,
+                color: Colors.white,
+              ),
+            )
             .animate(onPlay: (c) => c.repeat(reverse: true))
             .scale(
               begin: const Offset(1, 1),
-              end: const Offset(1.05, 1.05),
+              end: const Offset(1.04, 1.04),
               duration: 2000.ms,
-            )
-            .then()
-            .shimmer(duration: 3000.ms),
+            ),
 
-        const SizedBox(height: 24),
+        const SizedBox(width: 16),
 
-        // Title
-        const Text(
-          'SPELLIT',
-          style: TextStyle(
-            fontSize: 42,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 6,
-          ),
-        ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.3),
-
-        const SizedBox(height: 8),
-
-        Text(
-          'Battle with words',
-          style: TextStyle(
-            fontSize: 16,
-            color: Colors.grey.shade600,
-            letterSpacing: 2,
-          ),
-        ).animate().fadeIn(delay: 400.ms),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'SPELLIT',
+              style: TextStyle(
+                fontSize: 34,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 5,
+              ),
+            ).animate().fadeIn(delay: 200.ms),
+            Text(
+              'Battle with words',
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.grey.shade500,
+                letterSpacing: 1.5,
+              ),
+            ).animate().fadeIn(delay: 350.ms),
+          ],
+        ),
       ],
     );
   }
@@ -394,43 +376,23 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen>
   Widget _buildMenuButtons() {
     return Column(
       children: [
-        // Solo Play
         _buildMenuButton(
           icon: Icons.person,
           label: 'SOLO PLAY',
           subtitle: 'Practice your skills',
           color: Colors.green,
           onTap: () => _showSoloGameOptions(),
-        ).animate().fadeIn(delay: 600.ms).slideX(begin: -0.2),
+        ).animate().fadeIn(delay: 500.ms).slideX(begin: -0.2),
 
         const SizedBox(height: 12),
 
-        // Multiplayer
         _buildMenuButton(
           icon: Icons.people,
           label: 'MULTIPLAYER',
           subtitle: 'Battle with friends',
           color: Colors.blue,
           onTap: () => _navigateTo(const LobbyScreen()),
-        ).animate().fadeIn(delay: 700.ms).slideX(begin: 0.2),
-
-        const SizedBox(height: 12),
-
-        /*
-        // Quick Match (coming soon)
-        _buildMenuButton(
-          icon: Icons.flash_on,
-          label: 'QUICK MATCH',
-          subtitle: 'Find random opponent',
-          color: Colors.orange,
-          onTap: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Coming soon!')),
-            );
-          },
-          isComingSoon: true,
-        ).animate().fadeIn(delay: 800.ms).slideX(begin: -0.2),
-        */
+        ).animate().fadeIn(delay: 620.ms).slideX(begin: 0.2),
       ],
     );
   }
@@ -451,22 +413,22 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen>
           onTap: onTap,
           borderRadius: BorderRadius.circular(16),
           child: Container(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: color.withOpacity(0.3)),
+              border: Border.all(color: color.withValues(alpha: 0.25)),
             ),
             child: Row(
               children: [
                 Container(
-                  width: 56,
-                  height: 56,
+                  width: 50,
+                  height: 50,
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.2),
+                    color: color.withValues(alpha: 0.18),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Icon(icon, color: color, size: 28),
+                  child: Icon(icon, color: color, size: 26),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -478,7 +440,7 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen>
                           Text(
                             label,
                             style: TextStyle(
-                              fontSize: 18,
+                              fontSize: 16,
                               fontWeight: FontWeight.bold,
                               color: color,
                               letterSpacing: 1,
@@ -507,19 +469,18 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen>
                           ],
                         ],
                       ),
+                      const SizedBox(height: 2),
                       Text(
                         subtitle,
                         style: TextStyle(
-                          color: Colors.grey.shade600,
+                          color: Colors.grey.shade500,
+                          fontSize: 13,
                         ),
                       ),
                     ],
                   ),
                 ),
-                Icon(
-                  Icons.chevron_right,
-                  color: color.withOpacity(0.5),
-                ),
+                Icon(Icons.chevron_right, color: color.withValues(alpha: 0.45)),
               ],
             ),
           ),
@@ -529,85 +490,109 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen>
   }
 
   Widget _buildBottomNav() {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(30),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          _buildNavButton(
-            icon: Icons.card_giftcard,
-            label: 'Daily',
-            onTap: () => _navigateTo(const DailyRewardScreen()),
-          ),
-          _buildNavButton(
-            icon: Icons.store,
-            label: 'Shop',
-            onTap: () => _navigateTo(const ShopScreen()),
-          ),
-          _buildNavButton(
-            icon: Icons.leaderboard,
-            label: 'Ranks',
-            onTap: () => _navigateTo(const LeaderboardScreen()),
-          ),
-          _buildNavButton(
-            icon: Icons.chat_bubble,
-            label: 'Chat',
-            onTap: () => _navigateTo(const ChatScreen()),
-          ),
-          _buildNavButton(
-            icon: Icons.person,
-            label: 'Profile',
-            onTap: () => _navigateTo(const ProfileScreen()),
-          ),
-        ],
-      ),
-    ).animate().fadeIn(delay: 900.ms).slideY(begin: 0.5, curve: Curves.easeOutBack);
-  }
+    final colorScheme = Theme.of(context).colorScheme;
 
-  Widget _buildNavButton({
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-  }) {
-    return Expanded(
-      child: InkWell(
-        onTap: () {
-          ref.read(audioManagerProvider).playSfx(SoundEffect.buttonClick);
-          onTap();
-        },
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 2),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 28),
-              const SizedBox(height: 4),
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  label,
-                  style: const TextStyle(fontSize: 12),
-                  maxLines: 1,
-                ),
+    final items = [
+      _NavItem(
+        icon: Icons.card_giftcard_outlined,
+        activeIcon: Icons.card_giftcard,
+        label: 'Daily',
+        screen: const DailyRewardScreen(),
+      ),
+      _NavItem(
+        icon: Icons.store_outlined,
+        activeIcon: Icons.store,
+        label: 'Shop',
+        screen: const ShopScreen(),
+      ),
+      _NavItem(
+        icon: Icons.leaderboard_outlined,
+        activeIcon: Icons.leaderboard,
+        label: 'Ranks',
+        screen: const LeaderboardScreen(),
+      ),
+      _NavItem(
+        icon: Icons.chat_bubble_outline,
+        activeIcon: Icons.chat_bubble,
+        label: 'Chat',
+        screen: const ChatScreen(),
+      ),
+      _NavItem(
+        icon: Icons.person_outline,
+        activeIcon: Icons.person,
+        label: 'Profile',
+        screen: const ProfileScreen(),
+      ),
+    ];
+
+    return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+          decoration: BoxDecoration(
+            color: Theme.of(context).cardColor,
+            borderRadius: BorderRadius.circular(28),
+            boxShadow: [
+              BoxShadow(
+                color: colorScheme.primary.withValues(alpha: 0.08),
+                blurRadius: 24,
+                offset: const Offset(0, 8),
+              ),
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.06),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
               ),
             ],
           ),
-        ),
-      ),
-    );
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: items.map((item) {
+              return Expanded(
+                child: InkWell(
+                  onTap: () {
+                    ref
+                        .read(audioManagerProvider)
+                        .playSfx(SoundEffect.buttonClick);
+                    _navigateTo(item.screen);
+                  },
+                  borderRadius: BorderRadius.circular(16),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: colorScheme.primary.withValues(alpha: 0.0),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(
+                            item.icon,
+                            size: 24,
+                            color: Colors.grey.shade500,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          item.label,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.grey.shade500,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          maxLines: 1,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        )
+        .animate()
+        .fadeIn(delay: 800.ms)
+        .slideY(begin: 0.4, curve: Curves.easeOutBack);
   }
 
   void _showSoloGameOptions() {
@@ -627,14 +612,10 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen>
             children: [
               const Text(
                 'Solo Game Settings',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 24),
 
-              // Time limit
               Text(
                 'Time Limit: ${timeLimit ~/ 60}:${(timeLimit % 60).toString().padLeft(2, '0')}',
                 style: const TextStyle(fontWeight: FontWeight.bold),
@@ -652,7 +633,6 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen>
 
               const SizedBox(height: 16),
 
-              // Min word length
               Text(
                 'Minimum Word Length: $minWordLength letters',
                 style: const TextStyle(fontWeight: FontWeight.bold),
@@ -680,10 +660,12 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen>
                   ),
                   onPressed: () {
                     Navigator.pop(context);
-                    _navigateTo(SoloGameScreen(
-                      timeLimit: timeLimit,
-                      minWordLength: minWordLength,
-                    ));
+                    _navigateTo(
+                      SoloGameScreen(
+                        timeLimit: timeLimit,
+                        minWordLength: minWordLength,
+                      ),
+                    );
                   },
                 ),
               ),
@@ -695,4 +677,18 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen>
       ),
     );
   }
+}
+
+class _NavItem {
+  final IconData icon;
+  final IconData activeIcon;
+  final String label;
+  final Widget screen;
+
+  const _NavItem({
+    required this.icon,
+    required this.activeIcon,
+    required this.label,
+    required this.screen,
+  });
 }

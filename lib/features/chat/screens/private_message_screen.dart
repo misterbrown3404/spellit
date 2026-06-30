@@ -18,7 +18,8 @@ class PrivateMessageScreen extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<PrivateMessageScreen> createState() => _PrivateMessageScreenState();
+  ConsumerState<PrivateMessageScreen> createState() =>
+      _PrivateMessageScreenState();
 }
 
 class _PrivateMessageScreenState extends ConsumerState<PrivateMessageScreen> {
@@ -34,17 +35,19 @@ class _PrivateMessageScreenState extends ConsumerState<PrivateMessageScreen> {
     _messageController.clear();
 
     try {
-      await ref.read(chatServiceProvider).sendPrivateMessage(
-        user.uid,
-        user.displayName?.isEmpty ?? true ? 'Player' : user.displayName!,
-        widget.otherUserId,
-        text,
-      );
+      await ref
+          .read(chatServiceProvider)
+          .sendPrivateMessage(
+            user.uid,
+            user.displayName?.isEmpty ?? true ? 'Player' : user.displayName!,
+            widget.otherUserId,
+            text,
+          );
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     }
   }
@@ -60,10 +63,9 @@ class _PrivateMessageScreenState extends ConsumerState<PrivateMessageScreen> {
         builder: (_) => const Center(child: CircularProgressIndicator()),
       );
 
-      final room = await ref.read(roomServiceProvider).joinRoom(
-        roomCode: code,
-        playerId: user.uid,
-      );
+      final room = await ref
+          .read(roomServiceProvider)
+          .joinRoom(roomCode: code, playerId: user.uid);
 
       if (mounted) {
         Navigator.pop(context); // Dismiss loading
@@ -80,7 +82,10 @@ class _PrivateMessageScreenState extends ConsumerState<PrivateMessageScreen> {
       if (mounted) {
         Navigator.pop(context); // Dismiss loading
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not join: $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text('Could not join: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }
@@ -92,20 +97,19 @@ class _PrivateMessageScreenState extends ConsumerState<PrivateMessageScreen> {
     final currentUser = ref.watch(authStateProvider).value;
 
     if (currentUser == null) {
-      return const Scaffold(
-        body: Center(child: Text('Not authenticated')),
-      );
+      return const Scaffold(body: Center(child: Text('Not authenticated')));
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.otherUserName),
-      ),
+      appBar: AppBar(title: Text(widget.otherUserName)),
       body: Column(
         children: [
           Expanded(
             child: StreamBuilder<List<ChatMessage>>(
-              stream: chatService.getPrivateChatStream(currentUser.uid, widget.otherUserId),
+              stream: chatService.getPrivateChatStream(
+                currentUser.uid,
+                widget.otherUserId,
+              ),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
@@ -158,12 +162,16 @@ class _PrivateMessageScreenState extends ConsumerState<PrivateMessageScreen> {
               ? Theme.of(context).colorScheme.primary
               : Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(16).copyWith(
-            bottomRight: isMe ? const Radius.circular(0) : const Radius.circular(16),
-            bottomLeft: !isMe ? const Radius.circular(0) : const Radius.circular(16),
+            bottomRight: isMe
+                ? const Radius.circular(0)
+                : const Radius.circular(16),
+            bottomLeft: !isMe
+                ? const Radius.circular(0)
+                : const Radius.circular(16),
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 5,
               offset: const Offset(0, 2),
             ),
@@ -242,7 +250,7 @@ class _PrivateMessageScreenState extends ConsumerState<PrivateMessageScreen> {
         color: Theme.of(context).cardColor,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, -5),
           ),
@@ -261,8 +269,11 @@ class _PrivateMessageScreenState extends ConsumerState<PrivateMessageScreen> {
                     borderSide: BorderSide.none,
                   ),
                   filled: true,
-                  fillColor: Colors.grey.withOpacity(0.1),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  fillColor: Colors.grey.withValues(alpha: 0.1),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 10,
+                  ),
                 ),
                 textCapitalization: TextCapitalization.sentences,
                 onSubmitted: (_) => _sendMessage(),

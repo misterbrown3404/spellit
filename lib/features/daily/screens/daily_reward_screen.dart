@@ -54,7 +54,8 @@ class _DailyRewardScreenState extends ConsumerState<DailyRewardScreen> {
 
         bool hasClaimedToday = false;
         if (lastLogin != null) {
-          hasClaimedToday = lastLogin.year == now.year &&
+          hasClaimedToday =
+              lastLogin.year == now.year &&
               lastLogin.month == now.month &&
               lastLogin.day == now.day;
         }
@@ -75,7 +76,9 @@ class _DailyRewardScreenState extends ConsumerState<DailyRewardScreen> {
       }
     } on FirebaseException catch (e) {
       if (e.code == 'unavailable') {
-        print('Firestore unavailable while loading streak. Using defaults.');
+        debugPrint(
+          'Firestore unavailable while loading streak. Using defaults.',
+        );
         if (mounted) setState(() => _isLoading = false);
       } else {
         if (mounted) setState(() => _isLoading = false);
@@ -110,6 +113,7 @@ class _DailyRewardScreenState extends ConsumerState<DailyRewardScreen> {
           .collection('users')
           .doc(user.uid)
           .update(updateData);
+      if (!mounted) return;
 
       ref.read(audioManagerProvider).playSfx(SoundEffect.streakBonus);
 
@@ -120,9 +124,10 @@ class _DailyRewardScreenState extends ConsumerState<DailyRewardScreen> {
 
       _showRewardClaimedDialog(coins, bonus);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to claim reward: $e')),
-      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to claim reward: $e')));
     }
   }
 
@@ -141,16 +146,17 @@ class _DailyRewardScreenState extends ConsumerState<DailyRewardScreen> {
             const SizedBox(height: 16),
             const Text(
               'Reward Claimed!',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.monetization_on, color: Colors.amber, size: 32),
+                const Icon(
+                  Icons.monetization_on,
+                  color: Colors.amber,
+                  size: 32,
+                ),
                 const SizedBox(width: 8),
                 Text(
                   '+$coins',
@@ -170,7 +176,7 @@ class _DailyRewardScreenState extends ConsumerState<DailyRewardScreen> {
                   vertical: 8,
                 ),
                 decoration: BoxDecoration(
-                  color: Colors.purple.withOpacity(0.2),
+                  color: Colors.purple.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Row(
@@ -204,15 +210,11 @@ class _DailyRewardScreenState extends ConsumerState<DailyRewardScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Daily Rewards'),
-      ),
+      appBar: AppBar(title: const Text('Daily Rewards')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -224,20 +226,19 @@ class _DailyRewardScreenState extends ConsumerState<DailyRewardScreen> {
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [
-                    Colors.orange.shade400,
-                    Colors.red.shade400,
-                  ],
+                  colors: [Colors.orange.shade400, Colors.red.shade400],
                 ),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Column(
                 children: [
                   const Icon(
-                    Icons.local_fire_department,
-                    size: 64,
-                    color: Colors.white,
-                  ).animate(onPlay: (c) => c.repeat()).shimmer(duration: 2000.ms),
+                        Icons.local_fire_department,
+                        size: 64,
+                        color: Colors.white,
+                      )
+                      .animate(onPlay: (c) => c.repeat())
+                      .shimmer(duration: 2000.ms),
                   const SizedBox(height: 8),
                   Text(
                     '$_currentStreak',
@@ -249,10 +250,7 @@ class _DailyRewardScreenState extends ConsumerState<DailyRewardScreen> {
                   ),
                   const Text(
                     'Day Streak',
-                    style: TextStyle(
-                      fontSize: 20,
-                      color: Colors.white70,
-                    ),
+                    style: TextStyle(fontSize: 20, color: Colors.white70),
                   ),
                 ],
               ),
@@ -263,10 +261,7 @@ class _DailyRewardScreenState extends ConsumerState<DailyRewardScreen> {
             // Weekly rewards grid
             const Text(
               'Weekly Rewards',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             const Text(
@@ -295,16 +290,16 @@ class _DailyRewardScreenState extends ConsumerState<DailyRewardScreen> {
                 final isLocked = index > dayInWeek;
 
                 return _buildDayCard(
-                  day: index + 1,
-                  coins: reward['coins'] as int,
-                  hasBonus: reward['bonus'] != null,
-                  isCompleted: isCompleted,
-                  isCurrent: isCurrent && !_hasClaimedToday,
-                  isLocked: isLocked || (isCurrent && _hasClaimedToday),
-                ).animate().fadeIn(delay: (100 * index).ms).scale(
-                      begin: const Offset(0.8, 0.8),
-                      duration: 300.ms,
-                    );
+                      day: index + 1,
+                      coins: reward['coins'] as int,
+                      hasBonus: reward['bonus'] != null,
+                      isCompleted: isCompleted,
+                      isCurrent: isCurrent && !_hasClaimedToday,
+                      isLocked: isLocked || (isCurrent && _hasClaimedToday),
+                    )
+                    .animate()
+                    .fadeIn(delay: (100 * index).ms)
+                    .scale(begin: const Offset(0.8, 0.8), duration: 300.ms);
               },
             ),
 
@@ -315,10 +310,14 @@ class _DailyRewardScreenState extends ConsumerState<DailyRewardScreen> {
               width: double.infinity,
               child: FilledButton.icon(
                 onPressed: _hasClaimedToday ? null : _claimReward,
-                icon: Icon(_hasClaimedToday ? Icons.check : Icons.card_giftcard),
-                label: Text(_hasClaimedToday
-                    ? 'Claimed Today!'
-                    : 'Claim $_todayReward Coins'),
+                icon: Icon(
+                  _hasClaimedToday ? Icons.check : Icons.card_giftcard,
+                ),
+                label: Text(
+                  _hasClaimedToday
+                      ? 'Claimed Today!'
+                      : 'Claim $_todayReward Coins',
+                ),
                 style: FilledButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   backgroundColor: _hasClaimedToday ? Colors.green : null,
@@ -358,15 +357,15 @@ class _DailyRewardScreenState extends ConsumerState<DailyRewardScreen> {
     Color contentColor;
 
     if (isCompleted) {
-      backgroundColor = Colors.green.withOpacity(0.2);
+      backgroundColor = Colors.green.withValues(alpha: 0.2);
       borderColor = Colors.green;
       contentColor = Colors.green;
     } else if (isCurrent) {
-      backgroundColor = Colors.amber.withOpacity(0.2);
+      backgroundColor = Colors.amber.withValues(alpha: 0.2);
       borderColor = Colors.amber;
       contentColor = Colors.amber.shade700;
     } else {
-      backgroundColor = Colors.grey.withOpacity(0.1);
+      backgroundColor = Colors.grey.withValues(alpha: 0.1);
       borderColor = Colors.grey.shade300;
       contentColor = Colors.grey;
     }
@@ -400,10 +399,7 @@ class _DailyRewardScreenState extends ConsumerState<DailyRewardScreen> {
           const SizedBox(height: 4),
           Text(
             '$coins',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: contentColor,
-            ),
+            style: TextStyle(fontWeight: FontWeight.bold, color: contentColor),
           ),
         ],
       ),
@@ -414,7 +410,11 @@ class _DailyRewardScreenState extends ConsumerState<DailyRewardScreen> {
     final milestones = [
       {'days': 7, 'reward': '100 Coins + Shuffle', 'icon': Icons.looks_one},
       {'days': 14, 'reward': '200 Coins + Reveal', 'icon': Icons.looks_two},
-      {'days': 30, 'reward': '500 Coins + All Power-ups', 'icon': Icons.emoji_events},
+      {
+        'days': 30,
+        'reward': '500 Coins + All Power-ups',
+        'icon': Icons.emoji_events,
+      },
     ];
 
     return Column(
@@ -422,10 +422,7 @@ class _DailyRewardScreenState extends ConsumerState<DailyRewardScreen> {
       children: [
         const Text(
           'Milestone Rewards',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 12),
         ...milestones.map((milestone) {
@@ -444,8 +441,8 @@ class _DailyRewardScreenState extends ConsumerState<DailyRewardScreen> {
                     height: 50,
                     decoration: BoxDecoration(
                       color: isAchieved
-                          ? Colors.green.withOpacity(0.2)
-                          : Colors.grey.withOpacity(0.1),
+                          ? Colors.green.withValues(alpha: 0.2)
+                          : Colors.grey.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(

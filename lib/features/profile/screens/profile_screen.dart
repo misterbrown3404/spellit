@@ -42,7 +42,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     } on FirebaseException catch (e) {
       if (mounted && e.code != 'unavailable') {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to save: ${e.message}'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text('Failed to save: ${e.message}'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } finally {
@@ -53,21 +56,20 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   void _confirmSignOut() {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (ctx) => AlertDialog(
         title: const Text('Sign Out'),
         content: const Text('Are you sure you want to sign out?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(ctx),
             child: const Text('Cancel'),
           ),
           FilledButton(
             onPressed: () async {
+              Navigator.pop(context); // Close dialog
               await ref.read(authServiceProvider).signOut();
-              if (mounted) {
-                Navigator.pop(context); // Close dialog
-                Navigator.pop(context); // Go back to login
-              }
+              if (!mounted) return; // ← State's mounted is correct here
+              Navigator.pop(context);
             },
             child: const Text('Sign Out'),
           ),
@@ -79,40 +81,36 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   void _confirmDeleteAccount() {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (ctx) => AlertDialog(
         title: const Text('Delete Account'),
         content: const Text(
           'This action cannot be undone. All your data including progress, coins, and achievements will be permanently deleted.',
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(ctx),
             child: const Text('Cancel'),
           ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () async {
-              Navigator.pop(context); // Close dialog
-              
+              Navigator.pop(ctx); // close dialog before await
               try {
                 await ref.read(authServiceProvider).deleteAccount();
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Account deleted successfully')),
-                  );
-                  // Return to login screen
-                  Navigator.pop(context);
-                }
+                if (!mounted) return; // ← guard after await
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Account deleted successfully')),
+                );
+                Navigator.pop(context);
               } catch (e) {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(e.toString().replaceAll('Exception: ', '')),
-                      backgroundColor: Colors.red,
-                      duration: const Duration(seconds: 5),
-                    ),
-                  );
-                }
+                if (!mounted) return; // ← guard in catch too
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(e.toString().replaceAll('Exception: ', '')),
+                    backgroundColor: Colors.red,
+                    duration: const Duration(seconds: 5),
+                  ),
+                );
               }
             },
             child: const Text('Delete'),
@@ -140,11 +138,18 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.account_circle_outlined, size: 80, color: Colors.grey),
+                    const Icon(
+                      Icons.account_circle_outlined,
+                      size: 80,
+                      color: Colors.grey,
+                    ),
                     const SizedBox(height: 24),
                     const Text(
                       'Profile Setup Needed',
-                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     const Text(
@@ -157,19 +162,26 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       onPressed: () async {
                         if (authUser != null) {
                           // Try to fix it by ensuring the document exists
-                          await FirebaseFirestore.instance.collection('users').doc(authUser.uid).set({
-                            'displayName': authUser.displayName ?? 'Player',
-                            'email': authUser.email ?? '',
-                            'lastLoginDate': FieldValue.serverTimestamp(),
-                            'coins': 100,
-                            'eloRating': 1000,
-                            'totalGamesPlayed': 0,
-                            'totalWins': 0,
-                            'currentStreak': 0,
-                            'longestStreak': 0,
-                            'inventory': {'freeze': 0, 'reveal': 0, 'shuffle': 1},
-                          }, SetOptions(merge: true));
-                          ref.refresh(currentPlayerProvider);
+                          await FirebaseFirestore.instance
+                              .collection('users')
+                              .doc(authUser.uid)
+                              .set({
+                                'displayName': authUser.displayName ?? 'Player',
+                                'email': authUser.email ?? '',
+                                'lastLoginDate': FieldValue.serverTimestamp(),
+                                'coins': 100,
+                                'eloRating': 1000,
+                                'totalGamesPlayed': 0,
+                                'totalWins': 0,
+                                'currentStreak': 0,
+                                'longestStreak': 0,
+                                'inventory': {
+                                  'freeze': 0,
+                                  'reveal': 0,
+                                  'shuffle': 1,
+                                },
+                              }, SetOptions(merge: true));
+                          ref.invalidate(currentPlayerProvider);
                         }
                       },
                       icon: const Icon(Icons.refresh),
@@ -209,10 +221,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       gradient: LinearGradient(
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
-                        colors: [
-                          colorScheme.primary,
-                          colorScheme.secondary,
-                        ],
+                        colors: [colorScheme.primary, colorScheme.secondary],
                       ),
                     ),
                     child: SafeArea(
@@ -226,11 +235,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             height: 88,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: Colors.white.withOpacity(0.25),
+                              color: Colors.white.withValues(alpha: 0.25),
                               border: Border.all(color: Colors.white, width: 3),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.2),
+                                  color: Colors.black.withValues(alpha: 0.2),
                                   blurRadius: 12,
                                   offset: const Offset(0, 4),
                                 ),
@@ -246,14 +255,19 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                 ),
                               ),
                             ),
-                          ).animate().scale(duration: 500.ms, curve: Curves.elasticOut),
+                          ).animate().scale(
+                            duration: 500.ms,
+                            curve: Curves.elasticOut,
+                          ),
 
                           const SizedBox(height: 12),
 
                           // Name / Edit Row
                           _isEditingName
                               ? Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 48),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 48,
+                                  ),
                                   child: Row(
                                     children: [
                                       Expanded(
@@ -268,16 +282,20 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                           ),
                                           decoration: InputDecoration(
                                             filled: true,
-                                            fillColor: Colors.white.withOpacity(0.15),
+                                            fillColor: Colors.white.withValues(
+                                              alpha: 0.15,
+                                            ),
                                             border: OutlineInputBorder(
-                                              borderRadius: BorderRadius.circular(12),
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
                                               borderSide: BorderSide.none,
                                             ),
                                             isDense: true,
-                                            contentPadding: const EdgeInsets.symmetric(
-                                              horizontal: 12,
-                                              vertical: 8,
-                                            ),
+                                            contentPadding:
+                                                const EdgeInsets.symmetric(
+                                                  horizontal: 12,
+                                                  vertical: 8,
+                                                ),
                                           ),
                                         ),
                                       ),
@@ -292,12 +310,21 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                               ),
                                             )
                                           : IconButton(
-                                              icon: const Icon(Icons.check, color: Colors.white),
-                                              onPressed: () => _saveDisplayName(player.odid),
+                                              icon: const Icon(
+                                                Icons.check,
+                                                color: Colors.white,
+                                              ),
+                                              onPressed: () =>
+                                                  _saveDisplayName(player.odid),
                                             ),
                                       IconButton(
-                                        icon: const Icon(Icons.close, color: Colors.white70),
-                                        onPressed: () => setState(() => _isEditingName = false),
+                                        icon: const Icon(
+                                          Icons.close,
+                                          color: Colors.white70,
+                                        ),
+                                        onPressed: () => setState(
+                                          () => _isEditingName = false,
+                                        ),
                                       ),
                                     ],
                                   ),
@@ -315,7 +342,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                     ),
                                     const SizedBox(width: 6),
                                     GestureDetector(
-                                      onTap: () => setState(() => _isEditingName = true),
+                                      onTap: () =>
+                                          setState(() => _isEditingName = true),
                                       child: const Icon(
                                         Icons.edit,
                                         size: 16,
@@ -329,10 +357,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
                           // Email
                           Text(
-                            player.email.isNotEmpty ? player.email : 'Guest Account',
+                            player.email.isNotEmpty
+                                ? player.email
+                                : 'Guest Account',
                             style: TextStyle(
                               fontSize: 13,
-                              color: Colors.white.withOpacity(0.75),
+                              color: Colors.white.withValues(alpha: 0.75),
                             ),
                           ),
 
@@ -340,16 +370,23 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
                           // ELO Badge
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 4,
+                            ),
                             decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
+                              color: Colors.white.withValues(alpha: 0.2),
                               borderRadius: BorderRadius.circular(20),
                               border: Border.all(color: Colors.white30),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Icon(Icons.stars, size: 14, color: Colors.amber),
+                                const Icon(
+                                  Icons.stars,
+                                  size: 14,
+                                  color: Colors.amber,
+                                ),
                                 const SizedBox(width: 4),
                                 Text(
                                   '${player.eloRating} ELO',
@@ -374,10 +411,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 padding: const EdgeInsets.all(16),
                 sliver: SliverList(
                   delegate: SliverChildListDelegate([
-
                     // ── Streak Banner ──────────────────────────────────
-                    _buildStreakBanner(player.currentStreak, player.longestStreak, colorScheme)
-                        .animate().fadeIn(delay: 100.ms).slideY(begin: 0.2),
+                    _buildStreakBanner(
+                      player.currentStreak,
+                      player.longestStreak,
+                      colorScheme,
+                    ).animate().fadeIn(delay: 100.ms).slideY(begin: 0.2),
 
                     const SizedBox(height: 16),
 
@@ -392,14 +431,34 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       mainAxisSpacing: 12,
                       childAspectRatio: 1.6,
                       children: [
-                        _statCard('Games Played', '${player.totalGamesPlayed}',
-                            Icons.sports_esports, Colors.blue, colorScheme),
-                        _statCard('Total Wins', '${player.totalWins}',
-                            Icons.emoji_events, Colors.amber, colorScheme),
-                        _statCard('Win Rate', '$winRate%',
-                            Icons.trending_up, Colors.green, colorScheme),
-                        _statCard('Longest Streak', '${player.longestStreak}d',
-                            Icons.local_fire_department, Colors.orange, colorScheme),
+                        _statCard(
+                          'Games Played',
+                          '${player.totalGamesPlayed}',
+                          Icons.sports_esports,
+                          Colors.blue,
+                          colorScheme,
+                        ),
+                        _statCard(
+                          'Total Wins',
+                          '${player.totalWins}',
+                          Icons.emoji_events,
+                          Colors.amber,
+                          colorScheme,
+                        ),
+                        _statCard(
+                          'Win Rate',
+                          '$winRate%',
+                          Icons.trending_up,
+                          Colors.green,
+                          colorScheme,
+                        ),
+                        _statCard(
+                          'Longest Streak',
+                          '${player.longestStreak}d',
+                          Icons.local_fire_department,
+                          Colors.orange,
+                          colorScheme,
+                        ),
                       ],
                     ).animate().fadeIn(delay: 200.ms),
 
@@ -438,8 +497,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     if (player.inventory.isNotEmpty) ...[
                       _sectionTitle('Power-Up Inventory'),
                       const SizedBox(height: 10),
-                      _buildInventoryRow(player.inventory, colorScheme)
-                          .animate().fadeIn(delay: 400.ms),
+                      _buildInventoryRow(
+                        player.inventory,
+                        colorScheme,
+                      ).animate().fadeIn(delay: 400.ms),
                       const SizedBox(height: 20),
                     ],
 
@@ -452,15 +513,23 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       child: Column(
                         children: [
                           ListTile(
-                            leading: const Icon(Icons.logout, color: Colors.orange),
+                            leading: const Icon(
+                              Icons.logout,
+                              color: Colors.orange,
+                            ),
                             title: const Text('Sign Out'),
                             onTap: _confirmSignOut,
                           ),
                           const Divider(height: 1),
                           ListTile(
-                            leading: const Icon(Icons.delete_forever, color: Colors.red),
+                            leading: const Icon(
+                              Icons.delete_forever,
+                              color: Colors.red,
+                            ),
                             title: const Text('Delete Account'),
-                            subtitle: const Text('Permanently delete your profile data'),
+                            subtitle: const Text(
+                              'Permanently delete your profile data',
+                            ),
                             onTap: _confirmDeleteAccount,
                           ),
                         ],
@@ -500,7 +569,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.orange.withOpacity(0.3),
+            color: Colors.orange.withValues(alpha: 0.3),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -508,7 +577,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       ),
       child: Row(
         children: [
-          const Icon(Icons.local_fire_department, size: 40, color: Colors.white),
+          const Icon(
+            Icons.local_fire_department,
+            size: 40,
+            color: Colors.white,
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -532,7 +605,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              const Text('Best', style: TextStyle(color: Colors.white70, fontSize: 11)),
+              const Text(
+                'Best',
+                style: TextStyle(color: Colors.white70, fontSize: 11),
+              ),
               Text(
                 '$longest',
                 style: const TextStyle(
@@ -548,20 +624,26 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  Widget _statCard(String label, String value, IconData icon, Color color, ColorScheme cs) {
+  Widget _statCard(
+    String label,
+    String value,
+    IconData icon,
+    Color color,
+    ColorScheme cs,
+  ) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.08),
+        color: color.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: color.withOpacity(0.2)),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.15),
+              color: color.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(icon, color: color, size: 20),
@@ -582,7 +664,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 ),
                 Text(
                   label,
-                  style: TextStyle(fontSize: 11, color: cs.onSurface.withOpacity(0.6)),
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: cs.onSurface.withValues(alpha: 0.6),
+                  ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -594,13 +679,19 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  Widget _walletCard(String label, String amount, IconData icon, Color color, ColorScheme cs) {
+  Widget _walletCard(
+    String label,
+    String amount,
+    IconData icon,
+    Color color,
+    ColorScheme cs,
+  ) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.08),
+        color: color.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: color.withOpacity(0.2)),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -609,7 +700,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             children: [
               Icon(icon, color: color, size: 20),
               const SizedBox(width: 6),
-              Text(label, style: TextStyle(fontSize: 13, color: cs.onSurface.withOpacity(0.6))),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: cs.onSurface.withValues(alpha: 0.6),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 6),
@@ -648,9 +745,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.08),
+            color: color.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: color.withOpacity(0.25)),
+            border: Border.all(color: color.withValues(alpha: 0.25)),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,

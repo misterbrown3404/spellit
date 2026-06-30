@@ -1,10 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:flutter_riverpod/legacy.dart';
 import 'package:spellit/core/setting_service.dart';
 import 'package:spellit/features/auth/screens/login_screen.dart';
 import 'package:spellit/main_menu_screen.dart';
@@ -18,28 +18,26 @@ import 'core/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   // Enable Firestore offline persistence for production
   FirebaseFirestore.instance.settings = const Settings(
     persistenceEnabled: true,
   );
-  
+
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
-  
+
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
       statusBarIconBrightness: Brightness.dark,
     ),
   );
-  
+
   runApp(const ProviderScope(child: SpellItApp()));
 }
 
@@ -53,7 +51,8 @@ class SpellItApp extends ConsumerStatefulWidget {
   ConsumerState<SpellItApp> createState() => _SpellItAppState();
 }
 
-class _SpellItAppState extends ConsumerState<SpellItApp> with WidgetsBindingObserver {
+class _SpellItAppState extends ConsumerState<SpellItApp>
+    with WidgetsBindingObserver {
   bool _isInitialized = false;
   bool _showTutorial = false;
 
@@ -82,25 +81,36 @@ class _SpellItAppState extends ConsumerState<SpellItApp> with WidgetsBindingObse
   }
 
   Future<void> _initialize() async {
-    final settingsService = ref.read(settingsServiceProvider);
-    await settingsService.init();
+    try {
+      final settingsService = ref.read(settingsServiceProvider);
+      await settingsService.init();
 
-    if (settingsService.isDarkMode) {
-      ref.read(themeProvider.notifier).state = ThemeMode.dark;
-    } else {
-      ref.read(themeProvider.notifier).state = ThemeMode.light;
+      if (settingsService.isDarkMode) {
+        ref.read(themeProvider.notifier).state = ThemeMode.dark;
+      } else {
+        ref.read(themeProvider.notifier).state = ThemeMode.light;
+      }
+
+      final tutorialService = ref.read(tutorialServiceProvider);
+      await tutorialService.init();
+
+      final notificationService = ref.read(notificationServiceProvider);
+      await notificationService.init();
+
+      if (mounted) {
+        setState(() {
+          _showTutorial = !tutorialService.isTutorialCompleted;
+          _isInitialized = true;
+        });
+      }
+    } catch (e) {
+      debugPrint('Initialization error: $e');
+      if (mounted) {
+        setState(() {
+          _isInitialized = true;
+        });
+      }
     }
-
-    final tutorialService = ref.read(tutorialServiceProvider);
-    await tutorialService.init();
-
-    final notificationService = ref.read(notificationServiceProvider);
-    await notificationService.init();
-
-    setState(() {
-      _showTutorial = !tutorialService.isTutorialCompleted;
-      _isInitialized = true;
-    });
   }
 
   void _onTutorialComplete() {
@@ -130,15 +140,23 @@ class _SpellItAppState extends ConsumerState<SpellItApp> with WidgetsBindingObse
                 if (user == null) {
                   return const LoginScreen();
                 }
-                
-                // Show tutorial for first-time users
+
                 if (_showTutorial) {
                   return TutorialScreen(onComplete: _onTutorialComplete);
                 }
-                
+
                 return const MainMenuScreen();
               },
-              loading: () => const SplashScreen(),
+              loading: () {
+                final currentUser = FirebaseAuth.instance.currentUser;
+                if (currentUser != null) {
+                  if (_showTutorial) {
+                    return TutorialScreen(onComplete: _onTutorialComplete);
+                  }
+                  return const MainMenuScreen();
+                }
+                return const LoginScreen();
+              },
               error: (_, __) => const LoginScreen(),
             ),
     );

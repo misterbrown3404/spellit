@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -51,18 +50,9 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen>
               });
             },
             itemBuilder: (context) => [
-              const PopupMenuItem(
-                value: 'all_time',
-                child: Text('All Time'),
-              ),
-              const PopupMenuItem(
-                value: 'weekly',
-                child: Text('This Week'),
-              ),
-              const PopupMenuItem(
-                value: 'daily',
-                child: Text('Today'),
-              ),
+              const PopupMenuItem(value: 'all_time', child: Text('All Time')),
+              const PopupMenuItem(value: 'weekly', child: Text('This Week')),
+              const PopupMenuItem(value: 'daily', child: Text('Today')),
             ],
           ),
         ],
@@ -78,15 +68,34 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen>
     );
   }
 
+  DateTime? get _filterCutoff {
+    final now = DateTime.now();
+    return switch (_currentFilter) {
+      'weekly' => now.subtract(const Duration(days: 7)),
+      'daily' => DateTime(now.year, now.month, now.day),
+      _ => null, // 'all_time'
+    };
+  }
+
   Widget _buildLeaderboardList(String orderByField) {
     final user = ref.watch(authStateProvider).value;
+    final cutoff = _filterCutoff;
+
+    // Build query — apply date filter when not all_time
+    Query<Map<String, dynamic>> query = FirebaseFirestore.instance
+        .collection('users')
+        .orderBy(orderByField, descending: true)
+        .limit(100);
+
+    if (cutoff != null) {
+      query = query.where(
+        'lastPlayedAt',
+        isGreaterThanOrEqualTo: Timestamp.fromDate(cutoff),
+      );
+    }
 
     return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('users')
-          .orderBy(orderByField, descending: true)
-          .limit(100)
-          .snapshots(),
+      stream: query.snapshots(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
@@ -101,7 +110,6 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen>
           return const Center(child: Text('No players yet'));
         }
 
-        // Find current user's rank
         int? myRank;
         for (int i = 0; i < docs.length; i++) {
           if (docs[i].id == user?.uid) {
@@ -112,7 +120,6 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen>
 
         return Column(
           children: [
-            // Current user's rank card
             if (myRank != null)
               Container(
                 margin: const EdgeInsets.all(16),
@@ -170,7 +177,6 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen>
                 ),
               ).animate().fadeIn().slideY(begin: -0.2),
 
-            // Leaderboard list
             Expanded(
               child: ListView.builder(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -178,11 +184,10 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen>
                 itemBuilder: (context, index) {
                   final doc = docs[index];
                   final data = doc.data() as Map<String, dynamic>;
-                  final rank = index + 1;
                   final isCurrentUser = doc.id == user?.uid;
 
                   return _buildLeaderboardItem(
-                    rank: rank,
+                    rank: index + 1,
                     name: data['displayName'] ?? 'Player',
                     value: data[orderByField] ?? 0,
                     orderByField: orderByField,
@@ -220,26 +225,12 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen>
       rankIcon = Icons.emoji_events;
     }
 
-    String valueLabel;
-    IconData valueIcon;
-
-    switch (orderByField) {
-      case 'eloRating':
-        valueLabel = '$value';
-        valueIcon = Icons.stars;
-        break;
-      case 'totalWins':
-        valueLabel = '$value wins';
-        valueIcon = Icons.military_tech;
-        break;
-      case 'longestStreak':
-        valueLabel = '$value days';
-        valueIcon = Icons.local_fire_department;
-        break;
-      default:
-        valueLabel = '$value';
-        valueIcon = Icons.score;
-    }
+    final (valueLabel, valueIcon) = switch (orderByField) {
+      'eloRating' => ('$value', Icons.stars),
+      'totalWins' => ('$value wins', Icons.military_tech),
+      'longestStreak' => ('$value days', Icons.local_fire_department),
+      _ => ('$value', Icons.score),
+    };
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
@@ -303,10 +294,7 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen>
             const SizedBox(width: 4),
             Text(
               valueLabel,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
           ],
         ),

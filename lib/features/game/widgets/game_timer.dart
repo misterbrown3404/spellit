@@ -92,7 +92,8 @@ class GameTimerState extends State<GameTimer> with TickerProviderStateMixin {
   Widget build(BuildContext context) {
     final minutes = _remainingSeconds ~/ 60;
     final seconds = _remainingSeconds % 60;
-    final timeString = '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+    final timeString =
+        '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
 
     Color timerColor;
     if (widget.isFrozen) {
@@ -106,55 +107,62 @@ class GameTimerState extends State<GameTimer> with TickerProviderStateMixin {
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: timerColor.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: timerColor, width: 2),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (widget.isFrozen)
-            const Icon(Icons.ac_unit, color: Colors.lightBlue, size: 18)
-                .animate(onPlay: (c) => c.repeat())
-                .shimmer(duration: 1000.ms)
-          else
-            Icon(Icons.timer, color: timerColor, size: 18),
-          const SizedBox(width: 6),
-          Text(
-            timeString,
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: timerColor,
-              fontFeatures: const [FontFeature.tabularFigures()],
-            ),
-          ).animate(target: _isClutchMode ? 1 : 0).shake(hz: 2),
-          if (widget.isFrozen && widget.frozenSecondsRemaining != null) ...[
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: Colors.lightBlue,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                '${widget.frozenSecondsRemaining}s',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: timerColor.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(15),
+            border: Border.all(color: timerColor, width: 2),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (widget.isFrozen)
+                const Icon(
+                  Icons.ac_unit,
+                  color: Colors.lightBlue,
+                  size: 18,
+                ).animate(onPlay: (c) => c.repeat()).shimmer(duration: 1000.ms)
+              else
+                Icon(Icons.timer, color: timerColor, size: 18),
+              const SizedBox(width: 6),
+              Text(
+                timeString,
+                style: TextStyle(
+                  fontSize: 18,
                   fontWeight: FontWeight.bold,
+                  color: timerColor,
+                  fontFeatures: const [FontFeature.tabularFigures()],
                 ),
-              ),
-            ),
-          ],
-        ],
-      ),
-    ).animate(target: _isClutchMode ? 1 : 0).boxShadow(
+              ).animate(target: _isClutchMode ? 1 : 0).shake(hz: 2),
+              if (widget.isFrozen && widget.frozenSecondsRemaining != null) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.lightBlue,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    '${widget.frozenSecondsRemaining}s',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        )
+        .animate(target: _isClutchMode ? 1 : 0)
+        .boxShadow(
           begin: const BoxShadow(color: Colors.transparent),
           end: BoxShadow(
-            color: Colors.red.withOpacity(0.5),
+            color: Colors.red.withValues(alpha: 0.5),
             blurRadius: 20,
             spreadRadius: 2,
           ),

@@ -82,13 +82,12 @@ class _MultiplayerGameScreenState extends ConsumerState<MultiplayerGameScreen>
     _listenToEffects();
 
     // Track game start
-    ref.read(analyticsProvider).logEvent(
-      name: 'game_start',
-      parameters: {
-        'mode': 'multiplayer',
-        'room_id': widget.roomId,
-      },
-    );
+    ref
+        .read(analyticsProvider)
+        .logEvent(
+          name: 'game_start',
+          parameters: {'mode': 'multiplayer', 'room_id': widget.roomId},
+        );
   }
 
   void _loadPlayerInventory() async {
@@ -105,20 +104,23 @@ class _MultiplayerGameScreenState extends ConsumerState<MultiplayerGameScreen>
         final data = doc.data()!;
         if (mounted) {
           setState(() {
-            inventory = Map<String, int>.from(data['inventory'] ?? {
-              'freeze': 1,
-              'reveal': 1,
-              'shuffle': 2,
-              'double_points': 1,
-              'bomb': 1,
-              'shield': 1,
-            });
+            inventory = Map<String, int>.from(
+              data['inventory'] ??
+                  {
+                    'freeze': 1,
+                    'reveal': 1,
+                    'shuffle': 2,
+                    'double_points': 1,
+                    'bomb': 1,
+                    'shield': 1,
+                  },
+            );
           });
         }
       }
     } on FirebaseException catch (e) {
       if (e.code == 'unavailable') {
-        print('Firestore unavailable, using default inventory or cache.');
+        debugPrint('Firestore unavailable, using default inventory or cache.');
       }
     }
   }
@@ -149,23 +151,24 @@ class _MultiplayerGameScreenState extends ConsumerState<MultiplayerGameScreen>
         .doc(widget.roomId)
         .snapshots()
         .listen((snapshot) {
-      if (!snapshot.exists) return;
+          if (!snapshot.exists) return;
 
-      final data = snapshot.data()!;
-      final activeEffects = data['activeEffects'] as Map<String, dynamic>? ?? {};
+          final data = snapshot.data()!;
+          final activeEffects =
+              data['activeEffects'] as Map<String, dynamic>? ?? {};
 
-      // Check if there's an effect targeting current user
-      if (activeEffects.containsKey(user.uid)) {
-        final effect = activeEffects[user.uid] as Map<String, dynamic>;
-        final effectType = effect['type'] as String;
-        final endTime = (effect['endTime'] as Timestamp).toDate();
+          // Check if there's an effect targeting current user
+          if (activeEffects.containsKey(user.uid)) {
+            final effect = activeEffects[user.uid] as Map<String, dynamic>;
+            final effectType = effect['type'] as String;
+            final endTime = (effect['endTime'] as Timestamp).toDate();
 
-        // Check if effect is still active
-        if (DateTime.now().isBefore(endTime)) {
-          _applyEffect(effectType, endTime);
-        }
-      }
-    });
+            // Check if effect is still active
+            if (DateTime.now().isBefore(endTime)) {
+              _applyEffect(effectType, endTime);
+            }
+          }
+        });
   }
 
   void _applyEffect(String effectType, DateTime endTime) {
@@ -256,6 +259,7 @@ class _MultiplayerGameScreenState extends ConsumerState<MultiplayerGameScreen>
     if (hapticEnabled) {
       await Haptics.vibrate(HapticsType.light);
     }
+    if (!mounted) return;
 
     ref.read(audioManagerProvider).playSfx(SoundEffect.letterSelect);
 
@@ -292,7 +296,8 @@ class _MultiplayerGameScreenState extends ConsumerState<MultiplayerGameScreen>
 
       // Check if word is valid and not already found by this player
       final playerWords = _currentRoom!.wordsFound[user?.uid] ?? [];
-      isWordValid = dictionaryService.isValidWord(currentWord) &&
+      isWordValid =
+          dictionaryService.isValidWord(currentWord) &&
           !playerWords.contains(currentWord.toUpperCase());
 
       potentialScore = _calculateWordScore(currentWord);
@@ -331,6 +336,7 @@ class _MultiplayerGameScreenState extends ConsumerState<MultiplayerGameScreen>
       word: currentWord,
       score: wordScore,
     );
+    if (!mounted) return;
 
     if (success) {
       ref.read(audioManagerProvider).playSfx(SoundEffect.wordSubmit);
@@ -338,6 +344,7 @@ class _MultiplayerGameScreenState extends ConsumerState<MultiplayerGameScreen>
       if (hapticEnabled) {
         await Haptics.vibrate(HapticsType.success);
       }
+      if (!mounted) return;
     } else {
       ref.read(audioManagerProvider).playSfx(SoundEffect.wordInvalid);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -381,13 +388,14 @@ class _MultiplayerGameScreenState extends ConsumerState<MultiplayerGameScreen>
 
     // Update Firestore inventory (fire-and-forget with error handling)
     try {
-      await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
-        'inventory.${type.name}': FieldValue.increment(-1),
-      });
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).update(
+        {'inventory.${type.name}': FieldValue.increment(-1)},
+      );
     } on FirebaseException catch (e) {
       if (e.code != 'unavailable') rethrow;
       // Transient — local state is already decremented, will sync when back online
     }
+    if (!mounted) return;
 
     final roomService = ref.read(roomServiceProvider);
 
@@ -406,6 +414,7 @@ class _MultiplayerGameScreenState extends ConsumerState<MultiplayerGameScreen>
             powerUpType: 'freeze',
             duration: 10,
           );
+          if (!mounted) return;
           _showPowerUpUsed('Freeze sent to opponent!');
         }
         break;
@@ -423,6 +432,7 @@ class _MultiplayerGameScreenState extends ConsumerState<MultiplayerGameScreen>
             powerUpType: 'bomb',
             duration: 8,
           );
+          if (!mounted) return;
           _showPowerUpUsed('Bomb sent to opponent!');
         }
         break;
@@ -452,10 +462,7 @@ class _MultiplayerGameScreenState extends ConsumerState<MultiplayerGameScreen>
 
   void _showPowerUpUsed(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        duration: const Duration(seconds: 2),
-      ),
+      SnackBar(content: Text(message), duration: const Duration(seconds: 2)),
     );
   }
 
@@ -464,16 +471,23 @@ class _MultiplayerGameScreenState extends ConsumerState<MultiplayerGameScreen>
 
     final dictionaryService = ref.read(dictionaryServiceProvider);
     final user = ref.read(authStateProvider).value;
-    final playerWords = _currentRoom!.wordsFound[user?.uid] ?? [];
+    // final playerWords = _currentRoom!.wordsFound[user?.uid] ?? [];
+    isWordValid =
+        dictionaryService.isValidWord(currentWord) &&
+        !(_currentRoom!.wordsFound[user?.uid] ?? []).contains(
+          currentWord.toUpperCase(),
+        );
     final allFoundWords = _currentRoom!.wordsFound.values
         .expand((words) => words)
         .toSet();
 
     // Find a valid word
     for (int length = 5; length >= 3; length--) {
-      for (int startIndex = 0;
-          startIndex < _currentRoom!.gridLetters.length;
-          startIndex++) {
+      for (
+        int startIndex = 0;
+        startIndex < _currentRoom!.gridLetters.length;
+        startIndex++
+      ) {
         final indices = _findConnectedWord(startIndex, length);
         if (indices != null) {
           final word = indices.map((i) => _currentRoom!.gridLetters[i]).join();
@@ -569,15 +583,18 @@ class _MultiplayerGameScreenState extends ConsumerState<MultiplayerGameScreen>
     final myScore = room.scores[user.uid] ?? 0;
 
     try {
-      await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
-        'totalGamesPlayed': FieldValue.increment(1),
-        'totalWins': FieldValue.increment(isWinner ? 1 : 0),
-        'eloRating': FieldValue.increment(isWinner ? 25 : -10),
-        'coins': FieldValue.increment(myScore),
-      });
-      print('Successfully updated own stats for ${user.uid}');
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .update({
+            'totalGamesPlayed': FieldValue.increment(1),
+            'totalWins': FieldValue.increment(isWinner ? 1 : 0),
+            'eloRating': FieldValue.increment(isWinner ? 25 : -10),
+            'coins': FieldValue.increment(myScore),
+          });
+      debugPrint('Successfully updated own stats for ${user.uid}');
     } catch (e) {
-      print('Failed to update own stats: $e');
+      debugPrint('Failed to update own stats: $e');
     }
   }
 
@@ -593,14 +610,19 @@ class _MultiplayerGameScreenState extends ConsumerState<MultiplayerGameScreen>
     final user = ref.read(authStateProvider).value;
     if (user != null) {
       final myScore = room.scores[user.uid] ?? 0;
-      ref.read(analyticsProvider).logEvent(
-        name: 'game_end',
-        parameters: {
-          'mode': 'multiplayer',
-          'score': myScore,
-          'result': myScore >= room.scores.values.reduce((a, b) => a > b ? a : b) ? 'win' : 'loss',
-        },
-      );
+      ref
+          .read(analyticsProvider)
+          .logEvent(
+            name: 'game_end',
+            parameters: {
+              'mode': 'multiplayer',
+              'score': myScore,
+              'result':
+                  myScore >= room.scores.values.reduce((a, b) => a > b ? a : b)
+                  ? 'win'
+                  : 'loss',
+            },
+          );
 
       final notificationService = ref.read(notificationServiceProvider);
       notificationService.sendGameStartNotification(user.uid, room.roomCode);
@@ -624,17 +646,24 @@ class _MultiplayerGameScreenState extends ConsumerState<MultiplayerGameScreen>
     // Track game end
     if (currentUser != null) {
       final myScore = room.scores[currentUser.uid] ?? 0;
-      final opponentId = room.playerIds.firstWhere((id) => id != currentUser.uid, orElse: () => "");
-      final opponentScore = room.scores[opponentId] ?? 0;
-      
-      ref.read(analyticsProvider).logEvent(
-        name: 'game_end',
-        parameters: {
-          'mode': 'multiplayer',
-          'score': myScore,
-          'result': myScore > opponentScore ? 'win' : (myScore < opponentScore ? 'loss' : 'draw'),
-        },
+      final opponentId = room.playerIds.firstWhere(
+        (id) => id != currentUser.uid,
+        orElse: () => "",
       );
+      final opponentScore = room.scores[opponentId] ?? 0;
+
+      ref
+          .read(analyticsProvider)
+          .logEvent(
+            name: 'game_end',
+            parameters: {
+              'mode': 'multiplayer',
+              'score': myScore,
+              'result': myScore > opponentScore
+                  ? 'win'
+                  : (myScore < opponentScore ? 'loss' : 'draw'),
+            },
+          );
     }
 
     if (isWinner) {
@@ -677,35 +706,42 @@ class _MultiplayerGameScreenState extends ConsumerState<MultiplayerGameScreen>
                 builder: (context, snapshot) {
                   String name = 'Player';
                   if (snapshot.hasData && snapshot.data!.exists) {
-                    name = (snapshot.data!.data()
-                        as Map<String, dynamic>)['displayName'] ?? 'Player';
+                    name =
+                        (snapshot.data!.data()
+                            as Map<String, dynamic>)['displayName'] ??
+                        'Player';
                   }
                   return Container(
                     margin: const EdgeInsets.only(bottom: 8),
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       color: isWinnerPlayer
-                          ? Colors.amber.withOpacity(0.2)
-                          : Colors.grey.withOpacity(0.1),
+                          ? Colors.amber.withValues(alpha: 0.2)
+                          : Colors.grey.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                       border: isCurrentPlayer
                           ? Border.all(
                               color: Theme.of(context).colorScheme.primary,
-                              width: 2)
+                              width: 2,
+                            )
                           : null,
                     ),
                     child: Row(
                       children: [
                         if (isWinnerPlayer)
-                          const Icon(Icons.emoji_events,
-                              color: Colors.amber, size: 20),
+                          const Icon(
+                            Icons.emoji_events,
+                            color: Colors.amber,
+                            size: 20,
+                          ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             '$name ${isCurrentPlayer ? "(You)" : ""}',
                             style: TextStyle(
-                              fontWeight:
-                                  isCurrentPlayer ? FontWeight.bold : null,
+                              fontWeight: isCurrentPlayer
+                                  ? FontWeight.bold
+                                  : null,
                             ),
                           ),
                         ),
@@ -758,14 +794,12 @@ class _MultiplayerGameScreenState extends ConsumerState<MultiplayerGameScreen>
   @override
   Widget build(BuildContext context) {
     if (_currentRoom == null) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     final user = ref.watch(authStateProvider).value;
     final myScore = _currentRoom!.scores[user?.uid] ?? 0;
-    final myWordsCount = _currentRoom!.wordsFound[user?.uid]?.length ?? 0;
+    //  final myWordsCount = _currentRoom!.wordsFound[user?.uid]?.length ?? 0;
 
     return Scaffold(
       body: SafeArea(
@@ -816,7 +850,6 @@ class _MultiplayerGameScreenState extends ConsumerState<MultiplayerGameScreen>
               isEnabled: !isFrozen,
             ),
 
-
             // Action buttons
             Padding(
               padding: const EdgeInsets.all(16),
@@ -824,8 +857,9 @@ class _MultiplayerGameScreenState extends ConsumerState<MultiplayerGameScreen>
                 children: [
                   Expanded(
                     child: OutlinedButton.icon(
-                      onPressed:
-                          currentWord.isNotEmpty && !isFrozen ? _clearSelection : null,
+                      onPressed: currentWord.isNotEmpty && !isFrozen
+                          ? _clearSelection
+                          : null,
                       icon: const Icon(Icons.backspace),
                       label: const Text('Clear'),
                       style: OutlinedButton.styleFrom(
@@ -840,7 +874,8 @@ class _MultiplayerGameScreenState extends ConsumerState<MultiplayerGameScreen>
                       onPressed: isWordValid && !isFrozen ? _submitWord : null,
                       icon: const Icon(Icons.check),
                       label: Text(
-                          isWordValid ? 'Submit (+$potentialScore)' : 'Submit'),
+                        isWordValid ? 'Submit (+$potentialScore)' : 'Submit',
+                      ),
                       style: FilledButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         backgroundColor: isWordValid ? Colors.green : null,
@@ -863,7 +898,7 @@ class _MultiplayerGameScreenState extends ConsumerState<MultiplayerGameScreen>
         color: Theme.of(context).colorScheme.surface,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -918,8 +953,9 @@ class _MultiplayerGameScreenState extends ConsumerState<MultiplayerGameScreen>
   }
 
   Widget _buildOpponentScores(String? myUid) {
-    final opponents =
-        _currentRoom!.playerIds.where((id) => id != myUid).toList();
+    final opponents = _currentRoom!.playerIds
+        .where((id) => id != myUid)
+        .toList();
 
     if (opponents.isEmpty) return const SizedBox.shrink();
 
@@ -941,8 +977,10 @@ class _MultiplayerGameScreenState extends ConsumerState<MultiplayerGameScreen>
             builder: (context, snapshot) {
               String name = 'Opponent';
               if (snapshot.hasData && snapshot.data!.exists) {
-                name = (snapshot.data!.data()
-                    as Map<String, dynamic>)['displayName'] ?? 'Opponent';
+                name =
+                    (snapshot.data!.data()
+                        as Map<String, dynamic>)['displayName'] ??
+                    'Opponent';
               }
 
               return Container(
@@ -970,7 +1008,7 @@ class _MultiplayerGameScreenState extends ConsumerState<MultiplayerGameScreen>
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: Colors.lightBlue.withOpacity(0.2),
+                color: Colors.lightBlue.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(color: Colors.lightBlue),
               ),
@@ -995,7 +1033,7 @@ class _MultiplayerGameScreenState extends ConsumerState<MultiplayerGameScreen>
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: Colors.green.withOpacity(0.2),
+                color: Colors.green.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(color: Colors.green),
               ),
@@ -1021,7 +1059,7 @@ class _MultiplayerGameScreenState extends ConsumerState<MultiplayerGameScreen>
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: Colors.purple.withOpacity(0.2),
+                color: Colors.purple.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(color: Colors.purple),
               ),

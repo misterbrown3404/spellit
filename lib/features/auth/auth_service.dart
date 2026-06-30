@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -15,11 +17,11 @@ final authStateProvider = StreamProvider<User?>((ref) {
 
 final currentPlayerProvider = StreamProvider<PlayerModel?>((ref) {
   final authState = ref.watch(authStateProvider);
-  
+
   return authState.when(
     data: (user) {
       if (user == null) return const Stream.empty();
-      
+
       // Use includeMetadataChanges: true to see if data is from cache
       return FirebaseFirestore.instance
           .collection('users')
@@ -31,7 +33,7 @@ final currentPlayerProvider = StreamProvider<PlayerModel?>((ref) {
     },
     loading: () => const Stream.empty(),
     error: (e, __) {
-     // print('Auth state error in currentPlayerProvider: $e');
+      debugPrint('Auth state error in currentPlayerProvider: $e');
       return const Stream.empty();
     },
   );
@@ -40,6 +42,11 @@ final currentPlayerProvider = StreamProvider<PlayerModel?>((ref) {
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  // Centralized timeouts so no auth-related call can hang the UI forever.
+  static const _networkTimeout = Duration(seconds: 15);
+  static const _fcmTimeout = Duration(seconds: 5);
+  static const _firestoreTimeout = Duration(seconds: 5);
 
   User? get currentUser => _auth.currentUser;
 
@@ -50,10 +57,9 @@ class AuthService {
     required String displayName,
   }) async {
     try {
-      final credential = await _auth.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
+      final credential = await _auth
+          .createUserWithEmailAndPassword(email: email, password: password)
+          .timeout(_networkTimeout);
 
       if (credential.user != null) {
         await _ensureUserDocument(credential.user!, displayName);
@@ -62,7 +68,9 @@ class AuthService {
 
       return credential;
     } on FirebaseAuthException catch (e) {
-      throw _handleAuthException(e);
+      throw Exception(_handleAuthException(e));
+    } on TimeoutException {
+      throw Exception('This is taking longer than expected. Please try again.');
     }
   }
 
@@ -72,36 +80,48 @@ class AuthService {
     required String password,
   }) async {
     try {
-      final credential = await _auth.signInWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
+      final credential = await _auth
+          .signInWithEmailAndPassword(email: email, password: password)
+          .timeout(_networkTimeout);
 
       // Update daily streak and ensure document exists
       if (credential.user != null) {
-        await _ensureUserDocument(credential.user!, credential.user!.displayName ?? 'Player');
+        await _ensureUserDocument(
+          credential.user!,
+          credential.user!.displayName ?? 'Player',
+        );
         await _updateDailyStreak(credential.user!.uid);
         await _saveFCMToken(credential.user!.uid);
       }
 
       return credential;
     } on FirebaseAuthException catch (e) {
-      throw _handleAuthException(e);
+      throw Exception(_handleAuthException(e));
+    } on TimeoutException {
+      throw Exception('This is taking longer than expected. Please try again.');
     }
   }
 
   // Anonymous Sign In (Guest mode)
   Future<UserCredential?> signInAnonymously() async {
     try {
-      final credential = await _auth.signInAnonymously();
-      
+      final credential = await _auth.signInAnonymously().timeout(
+        _networkTimeout,
+      );
+
       if (credential.user != null) {
-        await _ensureUserDocument(credential.user!, 'Guest_${credential.user!.uid.substring(0, 5)}');
+        await _ensureUserDocument(
+          credential.user!,
+          'Guest_${credential.user!.uid.substring(0, 5)}',
+        );
         await _saveFCMToken(credential.user!.uid);
       }
 
       return credential;
+    } on TimeoutException {
+      throw Exception('This is taking longer than expected. Please try again.');
     } catch (e) {
+      debugPrint('Guest sign-in error: $e');
       throw Exception('Failed to sign in as guest');
     }
   }
@@ -110,19 +130,32 @@ class AuthService {
   Future<UserCredential?> signInWithGoogle() async {
     try {
       final GoogleSignIn googleSignIn = GoogleSignIn();
-      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
-      if (googleUser == null) return null;
 
-      final GoogleSignInAuthentication googleAuth =
-          await googleUser.authentication;
+      debugPrint('[Auth] 1/5 starting googleSignIn.signIn()');
+      final GoogleSignInAccount? googleUser = await googleSignIn
+          .signIn()
+          .timeout(_networkTimeout);
+      debugPrint('[Auth] 2/5 googleUser=${googleUser?.email}');
+
+      if (googleUser == null) {
+        // User cancelled the picker — not an error.
+        return null;
+      }
+
+      final GoogleSignInAuthentication googleAuth = await googleUser
+          .authentication
+          .timeout(_networkTimeout);
+      debugPrint('[Auth] 3/5 got googleAuth tokens');
 
       final AuthCredential credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
 
-      final userCredential =
-          await _auth.signInWithCredential(credential);
+      final userCredential = await _auth
+          .signInWithCredential(credential)
+          .timeout(_networkTimeout);
+      debugPrint('[Auth] 4/5 got userCredential');
 
       if (userCredential.user != null) {
         await _ensureUserDocument(
@@ -131,12 +164,18 @@ class AuthService {
         );
         await _saveFCMToken(userCredential.user!.uid);
       }
+      debugPrint('[Auth] 5/5 done');
 
       return userCredential;
+    } on TimeoutException {
+      throw Exception(
+        'Sign-in is taking longer than expected. Check your connection and try again.',
+      );
     } on FirebaseAuthException catch (e) {
       throw Exception(_handleAuthException(e));
     } catch (e) {
-      throw Exception('Failed to sign in with Google: ${e.toString()}');
+      debugPrint('[Auth] Google sign-in error: $e');
+      throw Exception('Failed to sign in with Google. Please try again.');
     }
   }
 
@@ -144,37 +183,48 @@ class AuthService {
   Future<void> _ensureUserDocument(User user, String displayName) async {
     int retryCount = 0;
     const maxRetries = 3;
-    
+
     while (retryCount < maxRetries) {
       try {
         final userDoc = _firestore.collection('users').doc(user.uid);
-        // Try to get document with a timeout
-        final docSnapshot = await userDoc.get().timeout(const Duration(seconds: 5));
+        final docSnapshot = await userDoc.get().timeout(_firestoreTimeout);
 
-      if (!docSnapshot.exists) {
-        final newPlayer = PlayerModel(
-          odid: user.uid,
-          displayName: displayName,
-          email: user.email ?? '',
-          lastLoginDate: DateTime.now(),
-        );
-        await userDoc.set(newPlayer.toFirestore());
-        print('Created new user document for ${user.uid}');
-      } else {
-        // Ensure the document exists and update last login
-        await userDoc.set({
-          'lastLoginDate': FieldValue.serverTimestamp(),
-        }, SetOptions(merge: true));
+        if (!docSnapshot.exists) {
+          final newPlayer = PlayerModel(
+            odid: user.uid,
+            displayName: displayName,
+            email: user.email ?? '',
+            lastLoginDate: DateTime.now(),
+          );
+          await userDoc.set(newPlayer.toFirestore()).timeout(_firestoreTimeout);
+          debugPrint('Created new user document for ${user.uid}');
+          return;
+        } else {
+          await userDoc
+              .set({
+                'lastLoginDate': FieldValue.serverTimestamp(),
+              }, SetOptions(merge: true))
+              .timeout(_firestoreTimeout);
           return; // Success, exit the loop
         }
+      } on TimeoutException {
+        retryCount++;
+        debugPrint('Firestore timeout, retry $retryCount/$maxRetries');
+        if (retryCount >= maxRetries) {
+          debugPrint('Giving up on _ensureUserDocument after timeouts');
+          break;
+        }
+        await Future.delayed(Duration(seconds: 2 * retryCount));
       } on FirebaseException catch (e) {
         if (e.code == 'unavailable' && retryCount < maxRetries - 1) {
           retryCount++;
-          print('Firestore unavailable, retrying ($retryCount/$maxRetries)...');
+          debugPrint(
+            'Firestore unavailable, retrying ($retryCount/$maxRetries)...',
+          );
           await Future.delayed(Duration(seconds: 2 * retryCount));
           continue;
         }
-        print('Firestore Error: ${e.code} - ${e.message}');
+        debugPrint('Firestore Error: ${e.code} - ${e.message}');
         break;
       } catch (e) {
         if (retryCount < maxRetries - 1) {
@@ -182,30 +232,38 @@ class AuthService {
           await Future.delayed(Duration(seconds: 2 * retryCount));
           continue;
         }
-        print('Error ensuring user document: $e');
+        debugPrint('Error ensuring user document: $e');
         break;
       }
     }
   }
 
   Future<void> _saveFCMToken(String uid) async {
-  try {
-    final token = await FirebaseMessaging.instance.getToken();
-    if (token != null) {
-      await _firestore.collection('users').doc(uid).set({
-        'fcmToken': token,
-      }, SetOptions(merge: true));
+    try {
+      // getToken() is known to hang indefinitely on iOS simulators / devices
+      // without proper push entitlements — never await it unbounded.
+      final token = await FirebaseMessaging.instance.getToken().timeout(
+        _fcmTimeout,
+      );
+      if (token != null) {
+        await _firestore
+            .collection('users')
+            .doc(uid)
+            .set({'fcmToken': token}, SetOptions(merge: true))
+            .timeout(_firestoreTimeout);
+      }
+    } on TimeoutException {
+      debugPrint('FCM token fetch/save timed out, skipping');
+    } catch (e) {
+      debugPrint('Failed to save FCM token: $e');
     }
-  } catch (e) {
-    debugPrint('Failed to save FCM token: $e');
   }
-}
 
   // Update daily streak
   Future<void> _updateDailyStreak(String odid) async {
     try {
       final userDoc = _firestore.collection('users').doc(odid);
-      final docSnapshot = await userDoc.get();
+      final docSnapshot = await userDoc.get().timeout(_firestoreTimeout);
 
       if (docSnapshot.exists) {
         final data = docSnapshot.data()!;
@@ -218,7 +276,7 @@ class AuthService {
 
         if (lastLogin != null) {
           final difference = now.difference(lastLogin).inDays;
-          
+
           if (difference == 1) {
             currentStreak++;
             coinsToAdd = _getStreakBonus(currentStreak);
@@ -237,12 +295,14 @@ class AuthService {
           longestStreak = currentStreak;
         }
 
-        await userDoc.update({
-          'lastLoginDate': Timestamp.fromDate(now),
-          'currentStreak': currentStreak,
-          'longestStreak': longestStreak,
-          'coins': FieldValue.increment(coinsToAdd),
-        });
+        await userDoc
+            .update({
+              'lastLoginDate': Timestamp.fromDate(now),
+              'currentStreak': currentStreak,
+              'longestStreak': longestStreak,
+              'coins': FieldValue.increment(coinsToAdd),
+            })
+            .timeout(_firestoreTimeout);
 
         if (currentStreak == 7 || currentStreak == 30) {
           await AchievementService().checkAndGrantAchievements(
@@ -258,6 +318,8 @@ class AuthService {
           );
         }
       }
+    } on TimeoutException {
+      debugPrint('Firestore timeout during streak update, skipping.');
     } on FirebaseException catch (e) {
       if (e.code == 'unavailable') {
         debugPrint('Firestore unavailable during streak update.');
@@ -283,17 +345,25 @@ class AuthService {
 
     try {
       // 1. Delete Firestore document first
-      await _firestore.collection('users').doc(user.uid).delete();
-      
+      await _firestore
+          .collection('users')
+          .doc(user.uid)
+          .delete()
+          .timeout(_firestoreTimeout);
+
       // 2. Delete Auth user
-      await user.delete();
+      await user.delete().timeout(_networkTimeout);
     } on FirebaseAuthException catch (e) {
       if (e.code == 'requires-recent-login') {
-        throw Exception('This action requires recent authentication. Please sign out and sign in again before deleting your account.');
+        throw Exception(
+          'This action requires recent authentication. Please sign out and sign in again before deleting your account.',
+        );
       }
-      throw _handleAuthException(e);
+      throw Exception(_handleAuthException(e));
+    } on TimeoutException {
+      throw Exception('This is taking longer than expected. Please try again.');
     } catch (e) {
-     // print('Delete account error: $e');
+      debugPrint('Delete account error: $e');
       rethrow;
     }
   }
@@ -305,7 +375,13 @@ class AuthService {
 
   // Password Reset
   Future<void> sendPasswordResetEmail(String email) async {
-    await _auth.sendPasswordResetEmail(email: email);
+    try {
+      await _auth.sendPasswordResetEmail(email: email).timeout(_networkTimeout);
+    } on FirebaseAuthException catch (e) {
+      throw Exception(_handleAuthException(e));
+    } on TimeoutException {
+      throw Exception('This is taking longer than expected. Please try again.');
+    }
   }
 
   String _handleAuthException(FirebaseAuthException e) {
@@ -320,13 +396,20 @@ class AuthService {
         return 'Wrong password provided.';
       case 'invalid-email':
         return 'The email address is invalid.';
+      case 'network-request-failed':
+        return 'Network error. Please check your connection and try again.';
+      case 'too-many-requests':
+        return 'Too many attempts. Please wait a moment and try again.';
       default:
         return 'An error occurred. Please try again.';
     }
   }
+
   Future<void> updateDisplayName(String odid, String displayName) async {
-  await _firestore.collection('users').doc(odid).update({
-    'displayName': displayName,
-  });
-}
+    await _firestore
+        .collection('users')
+        .doc(odid)
+        .update({'displayName': displayName})
+        .timeout(_firestoreTimeout);
+  }
 }

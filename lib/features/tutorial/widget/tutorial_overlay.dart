@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
@@ -23,63 +22,72 @@ class _TutorialOverlayState extends State<TutorialOverlay> {
   final List<TutorialStep> _steps = [
     TutorialStep(
       title: 'Welcome to SpellIt! 🎮',
-      description: 'The ultimate word battle game!\n\nForm words faster than your opponents to claim victory.',
+      description:
+          'The ultimate word battle game!\n\nForm words faster than your opponents to claim victory.',
       icon: Icons.grid_view_rounded,
       color: Colors.purple,
       imagePath: null,
     ),
     TutorialStep(
       title: 'The Letter Grid 🔤',
-      description: 'You\'ll see a 7x7 grid of letters.\n\nTap ANY letters to form words - they don\'t need to be next to each other!',
+      description:
+          'You\'ll see a 7x7 grid of letters.\n\nTap ANY letters to form words - they don\'t need to be next to each other!',
       icon: Icons.apps,
       color: Colors.blue,
       imagePath: null,
     ),
     TutorialStep(
       title: 'Forming Words ✍️',
-      description: 'Tap letters in any order to spell a word.\n\nThe number on each selected letter shows the order you picked them.',
+      description:
+          'Tap letters in any order to spell a word.\n\nThe number on selected letter shows the order you picked them.',
       icon: Icons.touch_app,
       color: Colors.green,
       imagePath: null,
     ),
     TutorialStep(
       title: 'Submit Your Word ✅',
-      description: 'When your word is valid, the Submit button turns GREEN.\n\nTap it to score points!',
+      description:
+          'When your word is valid, the Submit button turns GREEN.\n\nTap it to score points!',
       icon: Icons.check_circle,
       color: Colors.teal,
       imagePath: null,
     ),
     TutorialStep(
       title: 'Scoring System 🏆',
-      description: 'Longer words = More points!\n\n• 3 letters: 30 pts\n• 4 letters: 50 pts\n• 5 letters: 80 pts\n• 6 letters: 130 pts\n• 7+ letters: 200+ pts',
+      description:
+          'Longer words = More points!\n\n• 3 letters: 30 pts\n• 4 letters: 50 pts',
       icon: Icons.stars,
       color: Colors.amber,
       imagePath: null,
     ),
     TutorialStep(
       title: 'Bonus Letters ⭐',
-      description: 'Difficult letters give bonus points!\n\nQ, Z, X, J, K = +30 points each\n\nLook for tiles with 2x or 3x multipliers!',
+      description:
+          'Difficult letters give bonus points!\n\nQ, Z, X, J, K = +30 points each',
       icon: Icons.auto_awesome,
       color: Colors.orange,
       imagePath: null,
     ),
     TutorialStep(
       title: 'Power-Ups ⚡',
-      description: '❄️ Freeze - Stop opponent\'s timer\n💡 Reveal - Show a valid word\n🔀 Shuffle - Mix up the grid\n2️⃣x Double - 2x points for 15s\n🛡️ Shield - Block attacks\n💣 Bomb - Disable opponent letters',
+      description:
+          '❄️ Freeze - Stop opponent\'s timer\n💡 Reveal - Show a valid word\n🔀 Shuffle - Mix up the grid\n2️⃣x Double - 2x points for 15s',
       icon: Icons.bolt,
       color: Colors.red,
       imagePath: null,
     ),
     TutorialStep(
       title: 'Beat the Clock ⏱️',
-      description: 'Find as many words as you can before time runs out!\n\nIn multiplayer, the player with the highest score wins.',
+      description:
+          'Find as many words as you can before time runs out!\n\nIn multiplayer, the player with the highest score wins.',
       icon: Icons.timer,
       color: Colors.indigo,
       imagePath: null,
     ),
     TutorialStep(
       title: 'You\'re Ready! 🚀',
-      description: 'Start with Solo Mode to practice, then challenge friends in Multiplayer!\n\nGood luck and have fun!',
+      description:
+          'Start with Solo Mode to practice, then challenge friends in Multiplayer!\n\nGood luck and have fun!',
       icon: Icons.celebration,
       color: Colors.pink,
       imagePath: null,
@@ -115,7 +123,7 @@ class _TutorialOverlayState extends State<TutorialOverlay> {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.black.withOpacity(0.9),
+      color: Colors.black.withValues(alpha: 0.9),
       child: SafeArea(
         child: Column(
           children: [
@@ -179,7 +187,10 @@ class _TutorialOverlayState extends State<TutorialOverlay> {
                       child: OutlinedButton.icon(
                         onPressed: _previousStep,
                         icon: const Icon(Icons.arrow_back, color: Colors.white),
-                        label: const Text('Back', style: TextStyle(color: Colors.white)),
+                        label: const Text(
+                          'Back',
+                          style: TextStyle(color: Colors.white),
+                        ),
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           side: const BorderSide(color: Colors.white54),
@@ -205,7 +216,9 @@ class _TutorialOverlayState extends State<TutorialOverlay> {
                             : Icons.arrow_forward,
                       ),
                       label: Text(
-                        _currentStep == _steps.length - 1 ? 'Start Playing!' : 'Next',
+                        _currentStep == _steps.length - 1
+                            ? 'Start Playing!'
+                            : 'Next',
                         style: const TextStyle(fontSize: 16),
                       ),
                       style: FilledButton.styleFrom(
@@ -234,21 +247,15 @@ class _TutorialOverlayState extends State<TutorialOverlay> {
         children: [
           // Icon with animated background
           Container(
-            width: 120,
-            height: 120,
-            decoration: BoxDecoration(
-              color: step.color.withOpacity(0.2),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              step.icon,
-              size: 60,
-              color: step.color,
-            ),
-          )
-              .animate(
-                onPlay: (controller) => controller.repeat(reverse: true),
+                width: 120,
+                height: 120,
+                decoration: BoxDecoration(
+                  color: step.color.withValues(alpha: 0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(step.icon, size: 60, color: step.color),
               )
+              .animate(onPlay: (controller) => controller.repeat(reverse: true))
               .scale(
                 begin: const Offset(1, 1),
                 end: const Offset(1.1, 1.1),
@@ -287,15 +294,12 @@ class _TutorialOverlayState extends State<TutorialOverlay> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
-              color: step.color.withOpacity(0.3),
+              color: step.color.withValues(alpha: 0.3),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
               '${index + 1} of ${_steps.length}',
-              style: TextStyle(
-                color: step.color,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(color: step.color, fontWeight: FontWeight.bold),
             ),
           ).animate().fadeIn(delay: 300.ms),
         ],

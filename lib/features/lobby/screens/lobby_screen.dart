@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -15,7 +14,8 @@ class LobbyScreen extends ConsumerStatefulWidget {
   ConsumerState<LobbyScreen> createState() => _LobbyScreenState();
 }
 
-class _LobbyScreenState extends ConsumerState<LobbyScreen> with SingleTickerProviderStateMixin {
+class _LobbyScreenState extends ConsumerState<LobbyScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final _roomCodeController = TextEditingController();
   bool _isLoading = false;
@@ -110,10 +110,7 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> with SingleTickerProv
 
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-      ),
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
     );
   }
 
@@ -135,7 +132,7 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> with SingleTickerProv
         children: [
           // Create Room Tab
           _buildCreateRoomTab(),
-          
+
           // Join Room Tab
           _buildJoinRoomTab(),
         ],
@@ -152,9 +149,9 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> with SingleTickerProv
           // Game Mode Selection
           Text(
             'Game Mode',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 12),
           Wrap(
@@ -169,15 +166,15 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> with SingleTickerProv
               );
             }).toList(),
           ).animate().fadeIn().slideX(begin: -0.1),
-          
+
           const SizedBox(height: 24),
-          
+
           // Time Limit
           Text(
             'Time Limit: $_timeLimit seconds',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
           ),
           Slider(
             value: _timeLimit.toDouble(),
@@ -189,15 +186,15 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> with SingleTickerProv
               setState(() => _timeLimit = value.round());
             },
           ).animate().fadeIn(delay: 100.ms).slideX(begin: -0.1),
-          
+
           const SizedBox(height: 16),
-          
+
           // Minimum Word Length
           Text(
             'Minimum Word Length: $_wordLengthMin letters',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
           ),
           Slider(
             value: _wordLengthMin.toDouble(),
@@ -209,15 +206,15 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> with SingleTickerProv
               setState(() => _wordLengthMin = value.round());
             },
           ).animate().fadeIn(delay: 200.ms).slideX(begin: -0.1),
-          
+
           const SizedBox(height: 16),
-          
+
           // Max Players
           Text(
             'Max Players: $_maxPlayers',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
           ),
           Slider(
             value: _maxPlayers.toDouble(),
@@ -229,15 +226,15 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> with SingleTickerProv
               setState(() => _maxPlayers = value.round());
             },
           ).animate().fadeIn(delay: 300.ms).slideX(begin: -0.1),
-          
+
           const SizedBox(height: 16),
-          
+
           // Total Rounds
           Text(
             'Total Rounds: $_totalRounds',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
           ),
           Slider(
             value: _totalRounds.toDouble(),
@@ -249,16 +246,16 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> with SingleTickerProv
               setState(() => _totalRounds = value.round());
             },
           ).animate().fadeIn(delay: 400.ms).slideX(begin: -0.1),
-          
+
           const SizedBox(height: 16),
-          
+
           // Public / Private Toggle
           SwitchListTile(
             title: Text(
               'Public Room',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
             subtitle: const Text('Allow anyone to join from the lobby'),
             value: _isPublic,
@@ -267,9 +264,9 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> with SingleTickerProv
             },
             contentPadding: EdgeInsets.zero,
           ).animate().fadeIn(delay: 450.ms).slideX(begin: -0.1),
-          
+
           const SizedBox(height: 32),
-          
+
           // Create Button
           SizedBox(
             width: double.infinity,
@@ -301,33 +298,35 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> with SingleTickerProv
           sliver: SliverList(
             delegate: SliverChildListDelegate([
               const SizedBox(height: 40),
-              
+
               Icon(
                 Icons.meeting_room_outlined,
                 size: 80,
-                color: Theme.of(context).colorScheme.primary.withOpacity(0.5),
+                color: Theme.of(
+                  context,
+                ).colorScheme.primary.withValues(alpha: 0.5),
               ).animate().scale(),
-              
+
               const SizedBox(height: 24),
-              
+
               Text(
                 'Enter Room Code',
                 style: Theme.of(context).textTheme.headlineSmall,
                 textAlign: TextAlign.center,
               ),
-              
+
               const SizedBox(height: 8),
-              
+
               Text(
                 'Ask the host for their 6-character code',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Colors.grey,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(color: Colors.grey),
                 textAlign: TextAlign.center,
               ),
-              
+
               const SizedBox(height: 32),
-              
+
               // Room Code Input
               TextField(
                 controller: _roomCodeController,
@@ -351,9 +350,9 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> with SingleTickerProv
                   UpperCaseTextFormatter(),
                 ],
               ).animate().fadeIn().slideY(begin: 0.2),
-              
+
               const SizedBox(height: 32),
-              
+
               // Join Button
               SizedBox(
                 width: double.infinity,
@@ -372,16 +371,15 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> with SingleTickerProv
                   ),
                 ),
               ),
-              
+
               const SizedBox(height: 48), // Replace Spacer
-              
               // Public Rooms Section
               Text(
                 'Or join a public room',
                 style: Theme.of(context).textTheme.titleMedium,
                 textAlign: TextAlign.center,
               ),
-              
+
               const SizedBox(height: 16),
             ]),
           ),
@@ -399,16 +397,16 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> with SingleTickerProv
 
   Widget _buildPublicRoomsList() {
     final roomService = ref.watch(roomServiceProvider);
-    
+
     return StreamBuilder<List<RoomModel>>(
       stream: roomService.getPublicRooms(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
-        
+
         final rooms = snapshot.data ?? [];
-        
+
         if (rooms.isEmpty) {
           return Center(
             child: Text(
@@ -417,7 +415,7 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> with SingleTickerProv
             ),
           );
         }
-        
+
         return ListView.builder(
           itemCount: rooms.length,
           itemBuilder: (context, index) {
@@ -425,9 +423,7 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> with SingleTickerProv
             return Card(
               margin: const EdgeInsets.only(bottom: 8),
               child: ListTile(
-                leading: CircleAvatar(
-                  child: Text('${room.playerIds.length}'),
-                ),
+                leading: CircleAvatar(child: Text('${room.playerIds.length}')),
                 title: Text('Room ${room.roomCode}'),
                 subtitle: Text(
                   '${room.playerIds.length}/${room.maxPlayers} players • ${room.timeLimit}s',

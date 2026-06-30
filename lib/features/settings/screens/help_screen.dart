@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
@@ -8,9 +7,7 @@ class HelpScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('How to Play'),
-      ),
+      appBar: AppBar(title: const Text('How to Play')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -18,7 +15,8 @@ class HelpScreen extends StatelessWidget {
             context,
             icon: Icons.grid_view_rounded,
             title: 'The Grid',
-            content: 'You\'ll see a 7x7 grid of letters. Your goal is to form valid English words by selecting letters.',
+            content:
+                'You\'ll see a 7x7 grid of letters. Your goal is to form valid English words by selecting letters.',
             color: Colors.blue,
           ),
 
@@ -26,7 +24,8 @@ class HelpScreen extends StatelessWidget {
             context,
             icon: Icons.touch_app,
             title: 'Selecting Letters',
-            content: 'Tap ANY letters on the grid to form a word. Letters don\'t need to be next to each other!\n\nThe number on each selected letter shows the order you picked them.',
+            content:
+                'Tap ANY letters on the grid to form a word. Letters don\'t need to be next to each other!\n\nThe number on each selected letter shows the order you picked them.',
             color: Colors.green,
           ),
 
@@ -34,7 +33,8 @@ class HelpScreen extends StatelessWidget {
             context,
             icon: Icons.check_circle,
             title: 'Submitting Words',
-            content: 'When your word is valid:\n• The Submit button turns GREEN\n• Tap Submit to score points\n• Tap Clear to start over',
+            content:
+                'When your word is valid:\n• The Submit button turns GREEN\n• Tap Submit to score points\n• Tap Clear to start over',
             color: Colors.teal,
           ),
 
@@ -108,7 +108,10 @@ Tile multipliers: 2x or 3x points!''',
               children: [
                 Row(
                   children: [
-                    Icon(Icons.bookmark, color: Theme.of(context).colorScheme.primary),
+                    Icon(
+                      Icons.bookmark,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
                     const SizedBox(width: 8),
                     Text(
                       'Quick Reference',
@@ -124,7 +127,10 @@ Tile multipliers: 2x or 3x points!''',
                 _buildQuickRef('Minimum word length', '3 letters'),
                 _buildQuickRef('Grid size', '7 x 7'),
                 _buildQuickRef('Letters must touch?', 'NO - tap any letters!'),
-                _buildQuickRef('Same letter twice?', 'Only if on different tiles'),
+                _buildQuickRef(
+                  'Same letter twice?',
+                  'Only if on different tiles',
+                ),
               ],
             ),
           ).animate().fadeIn(delay: 500.ms).slideY(begin: 0.2),
@@ -154,7 +160,7 @@ Tile multipliers: 2x or 3x points!''',
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.2),
+                    color: color.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(icon, color: color),

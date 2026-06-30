@@ -41,10 +41,10 @@ class WordDisplay extends StatelessWidget {
           boxShadow: isValid
               ? [
                   BoxShadow(
-                    color: Colors.green.withOpacity(0.3),
+                    color: Colors.green.withValues(alpha: 0.3),
                     blurRadius: 12,
                     spreadRadius: 2,
-                  )
+                  ),
                 ]
               : null,
         ),
@@ -70,18 +70,21 @@ class WordDisplay extends StatelessWidget {
               // Word letters with animation
               ...currentWord.split('').asMap().entries.map((entry) {
                 return Text(
-                  entry.value,
-                  style: TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                    color: isValid
-                        ? Colors.green
-                        : Theme.of(context).textTheme.bodyLarge?.color,
-                    letterSpacing: 4,
-                  ),
-                ).animate().fadeIn(delay: (50 * entry.key).ms).slideX(begin: 0.2);
+                      entry.value,
+                      style: TextStyle(
+                        fontSize: 32,
+                        fontWeight: FontWeight.bold,
+                        color: isValid
+                            ? Colors.green
+                            : Theme.of(context).textTheme.bodyLarge?.color,
+                        letterSpacing: 4,
+                      ),
+                    )
+                    .animate()
+                    .fadeIn(delay: (50 * entry.key).ms)
+                    .slideX(begin: 0.2);
               }),
-              
+
               // Potential score
               if (potentialScore != null && currentWord.length >= 3) ...[
                 const SizedBox(width: 16),
@@ -92,7 +95,7 @@ class WordDisplay extends StatelessWidget {
                   ),
                   decoration: BoxDecoration(
                     color: isValid
-                        ? Colors.green.withOpacity(0.2)
+                        ? Colors.green.withValues(alpha: 0.2)
                         : Theme.of(context).colorScheme.primaryContainer,
                     borderRadius: BorderRadius.circular(8),
                   ),

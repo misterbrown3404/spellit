@@ -1,5 +1,4 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_riverpod/legacy.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 final settingsServiceProvider = Provider((ref) => SettingsService());
@@ -70,7 +69,8 @@ class SettingsService {
   }
 
   // Notifications
-  bool get isNotificationsEnabled => _prefs?.getBool(_keyNotificationsEnabled) ?? true;
+  bool get isNotificationsEnabled =>
+      _prefs?.getBool(_keyNotificationsEnabled) ?? true;
   Future<void> setNotificationsEnabled(bool value) async {
     await _prefs?.setBool(_keyNotificationsEnabled, value);
   }

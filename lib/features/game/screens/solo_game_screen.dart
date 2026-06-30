@@ -39,7 +39,7 @@ class _SoloGameScreenState extends ConsumerState<SoloGameScreen>
   List<String> wordsFound = [];
   bool isGameOver = false;
   bool _isLoading = true;
-  
+
   // Power-up states
   Map<String, int> inventory = {
     'freeze': 1,
@@ -51,12 +51,12 @@ class _SoloGameScreenState extends ConsumerState<SoloGameScreen>
   bool isDoublePoints = false;
   Timer? doublePointsTimer;
   Map<int, int> letterMultipliers = {};
-  
+
   // UI states
   bool isWordValid = false;
   bool isCheckingWord = false;
   int? potentialScore;
-  
+
   // Animation keys
   final GlobalKey<GameTimerState> _timerKey = GlobalKey();
 
@@ -73,24 +73,23 @@ class _SoloGameScreenState extends ConsumerState<SoloGameScreen>
   Future<void> _initGame() async {
     // Load dictionary
     await ref.read(dictionaryServiceProvider).loadDictionary();
-    
+
     // Generate grid
     _generateGrid();
-    
+
     // Generate random multipliers
     _generateMultipliers();
-    
+
     // Play game music
     _audioManager.playGameMusic();
-    
+
     // Track game start
-    ref.read(analyticsProvider).logEvent(
-      name: 'game_start',
-      parameters: {
-        'mode': 'solo',
-        'time_limit': widget.timeLimit,
-      },
-    );
+    ref
+        .read(analyticsProvider)
+        .logEvent(
+          name: 'game_start',
+          parameters: {'mode': 'solo', 'time_limit': widget.timeLimit},
+        );
   }
 
   void _generateGrid() {
@@ -133,7 +132,7 @@ class _SoloGameScreenState extends ConsumerState<SoloGameScreen>
   void _generateMultipliers() {
     Random rnd = Random();
     letterMultipliers.clear();
-    
+
     // Add 2-3 double point tiles
     int doubleCount = rnd.nextInt(2) + 2;
     for (int i = 0; i < doubleCount; i++) {
@@ -142,7 +141,7 @@ class _SoloGameScreenState extends ConsumerState<SoloGameScreen>
         letterMultipliers[index] = 2;
       }
     }
-    
+
     // Add 1 triple point tile
     int tripleIndex = rnd.nextInt(gridSize * gridSize);
     while (letterMultipliers.containsKey(tripleIndex)) {
@@ -156,7 +155,7 @@ class _SoloGameScreenState extends ConsumerState<SoloGameScreen>
     if (hapticEnabled) {
       await Haptics.vibrate(HapticsType.light);
     }
-    
+
     ref.read(audioManagerProvider).playSfx(SoundEffect.letterSelect);
 
     setState(() {
@@ -168,14 +167,14 @@ class _SoloGameScreenState extends ConsumerState<SoloGameScreen>
         selectedIndices.add(index);
         currentWord += gridLetters[index];
       }
-      
+
       _updateWordValidation();
     });
   }
 
   void _onSwipeComplete(List<int> indices) {
     if (indices.isEmpty) return;
-    
+
     setState(() {
       selectedIndices = indices;
       currentWord = indices.map((i) => gridLetters[i]).join();
@@ -186,7 +185,8 @@ class _SoloGameScreenState extends ConsumerState<SoloGameScreen>
   void _updateWordValidation() {
     if (currentWord.length == widget.minWordLength) {
       final dictionaryService = ref.read(dictionaryServiceProvider);
-      isWordValid = dictionaryService.isValidWord(currentWord) &&
+      isWordValid =
+          dictionaryService.isValidWord(currentWord) &&
           !wordsFound.contains(currentWord.toUpperCase());
       potentialScore = _calculateWordScore(currentWord);
     } else {
@@ -198,7 +198,7 @@ class _SoloGameScreenState extends ConsumerState<SoloGameScreen>
   int _calculateWordScore(String word) {
     final dictionaryService = ref.read(dictionaryServiceProvider);
     int baseScore = dictionaryService.getWordScore(word);
-    
+
     // Apply multipliers from selected tiles
     int multiplier = 1;
     for (int index in selectedIndices) {
@@ -206,14 +206,14 @@ class _SoloGameScreenState extends ConsumerState<SoloGameScreen>
         multiplier *= letterMultipliers[index]!;
       }
     }
-    
+
     baseScore *= multiplier;
-    
+
     // Apply double points power-up
     if (isDoublePoints) {
       baseScore *= 2;
     }
-    
+
     return baseScore;
   }
 
@@ -269,20 +269,20 @@ class _SoloGameScreenState extends ConsumerState<SoloGameScreen>
         _generateGrid();
         _generateMultipliers();
         break;
-        
+
       case PowerUpType.reveal:
         _revealWord();
         break;
-        
+
       case PowerUpType.doublePoints:
         _activateDoublePoints();
         break;
-        
+
       case PowerUpType.freeze:
         // In solo mode, freeze adds time instead
         _timerKey.currentState?.addTime(15);
         break;
-        
+
       default:
         break;
     }
@@ -291,7 +291,7 @@ class _SoloGameScreenState extends ConsumerState<SoloGameScreen>
   void _revealWord() {
     // Find a valid word in the grid
     final dictionaryService = ref.read(dictionaryServiceProvider);
-    
+
     // Simple reveal: find a 4-5 letter word by checking common patterns
     // This is a simplified version - a full implementation would use DFS
     for (int length = 5; length >= 3; length--) {
@@ -312,7 +312,7 @@ class _SoloGameScreenState extends ConsumerState<SoloGameScreen>
         }
       }
     }
-    
+
     // If no word found, just shuffle
     _generateGrid();
   }
@@ -321,20 +321,22 @@ class _SoloGameScreenState extends ConsumerState<SoloGameScreen>
     // Simple path finding - gets connected letters
     List<int> path = [startIndex];
     Random rnd = Random();
-    
+
     while (path.length < targetLength) {
       int current = path.last;
       int row = current ~/ gridSize;
       int col = current % gridSize;
-      
+
       List<int> neighbors = [];
       for (int dr = -1; dr <= 1; dr++) {
         for (int dc = -1; dc <= 1; dc++) {
           if (dr == 0 && dc == 0) continue;
           int newRow = row + dr;
           int newCol = col + dc;
-          if (newRow >= 0 && newRow < gridSize &&
-              newCol >= 0 && newCol < gridSize) {
+          if (newRow >= 0 &&
+              newRow < gridSize &&
+              newCol >= 0 &&
+              newCol < gridSize) {
             int neighborIndex = newRow * gridSize + newCol;
             if (!path.contains(neighborIndex)) {
               neighbors.add(neighborIndex);
@@ -342,11 +344,11 @@ class _SoloGameScreenState extends ConsumerState<SoloGameScreen>
           }
         }
       }
-      
+
       if (neighbors.isEmpty) return null;
       path.add(neighbors[rnd.nextInt(neighbors.length)]);
     }
-    
+
     return path;
   }
 
@@ -354,7 +356,7 @@ class _SoloGameScreenState extends ConsumerState<SoloGameScreen>
     setState(() {
       isDoublePoints = true;
     });
-    
+
     doublePointsTimer?.cancel();
     doublePointsTimer = Timer(const Duration(seconds: 15), () {
       if (mounted) {
@@ -371,17 +373,19 @@ class _SoloGameScreenState extends ConsumerState<SoloGameScreen>
     });
 
     // Track game end
-    ref.read(analyticsProvider).logEvent(
-      name: 'game_end',
-      parameters: {
-        'mode': 'solo',
-        'score': score,
-        'words_found': wordsFound.length,
-      },
-    );
-    
+    ref
+        .read(analyticsProvider)
+        .logEvent(
+          name: 'game_end',
+          parameters: {
+            'mode': 'solo',
+            'score': score,
+            'words_found': wordsFound.length,
+          },
+        );
+
     ref.read(audioManagerProvider).stopBackgroundMusic();
-    
+
     _showGameOverDialog();
   }
 
@@ -400,18 +404,11 @@ class _SoloGameScreenState extends ConsumerState<SoloGameScreen>
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(
-              Icons.emoji_events,
-              size: 64,
-              color: Colors.amber,
-            ),
+            const Icon(Icons.emoji_events, size: 64, color: Colors.amber),
             const SizedBox(height: 16),
             Text(
               'Final Score: $score',
-              style: const TextStyle(
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
-              ),
+              style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             Text(
@@ -432,10 +429,16 @@ class _SoloGameScreenState extends ConsumerState<SoloGameScreen>
                   child: Wrap(
                     spacing: 8,
                     runSpacing: 4,
-                    children: wordsFound.map((word) => Chip(
-                      label: Text(word),
-                      backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                    )).toList(),
+                    children: wordsFound
+                        .map(
+                          (word) => Chip(
+                            label: Text(word),
+                            backgroundColor: Theme.of(
+                              context,
+                            ).colorScheme.primaryContainer,
+                          ),
+                        )
+                        .toList(),
                   ),
                 ),
               ),
@@ -480,7 +483,7 @@ class _SoloGameScreenState extends ConsumerState<SoloGameScreen>
         'bomb': 0,
       };
     });
-    
+
     _generateGrid();
     _generateMultipliers();
     _timerKey.currentState?.reset();
@@ -497,9 +500,7 @@ class _SoloGameScreenState extends ConsumerState<SoloGameScreen>
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     return Scaffold(
@@ -518,10 +519,7 @@ class _SoloGameScreenState extends ConsumerState<SoloGameScreen>
         actions: [
           Padding(
             padding: const EdgeInsets.all(6.0),
-            child: ScoreDisplay(
-              score: score,
-              isDoublePoints: isDoublePoints,
-            ),
+            child: ScoreDisplay(score: score, isDoublePoints: isDoublePoints),
           ),
         ],
       ),
@@ -561,17 +559,20 @@ class _SoloGameScreenState extends ConsumerState<SoloGameScreen>
 
           // Letter grid
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: LetterGrid(
-              letters: gridLetters,
-              gridSize: gridSize,
-              selectedIndices: selectedIndices,
-              multipliers: letterMultipliers,
-              onLetterTap: _onLetterTap,
-              onSwipeComplete: _onSwipeComplete,
-              isEnabled: !isGameOver,
-            ),
-          ).animate().fadeIn(delay: 400.ms).scale(begin: const Offset(0.9, 0.9)),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: LetterGrid(
+                  letters: gridLetters,
+                  gridSize: gridSize,
+                  selectedIndices: selectedIndices,
+                  multipliers: letterMultipliers,
+                  onLetterTap: _onLetterTap,
+                  onSwipeComplete: _onSwipeComplete,
+                  isEnabled: !isGameOver,
+                ),
+              )
+              .animate()
+              .fadeIn(delay: 400.ms)
+              .scale(begin: const Offset(0.9, 0.9)),
 
           const Spacer(),
 
@@ -603,7 +604,9 @@ class _SoloGameScreenState extends ConsumerState<SoloGameScreen>
                   child: FilledButton.icon(
                     onPressed: isWordValid ? _submitWord : null,
                     icon: const Icon(Icons.check),
-                    label: Text(isWordValid ? 'Submit (+$potentialScore)' : 'Submit'),
+                    label: Text(
+                      isWordValid ? 'Submit (+$potentialScore)' : 'Submit',
+                    ),
                     style: FilledButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       backgroundColor: isWordValid ? Colors.green : null,
@@ -675,9 +678,9 @@ class _SoloGameScreenState extends ConsumerState<SoloGameScreen>
                   Text(
                     'Words Discovered',
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 0.5,
-                        ),
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.5,
+                    ),
                   ),
                   Container(
                     padding: const EdgeInsets.symmetric(
@@ -741,7 +744,10 @@ class _SoloGameScreenState extends ConsumerState<SoloGameScreen>
             else
               Flexible(
                 child: GridView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -767,7 +773,9 @@ class _SoloGameScreenState extends ConsumerState<SoloGameScreen>
                         borderRadius: BorderRadius.circular(14),
                         boxShadow: [
                           BoxShadow(
-                            color: Theme.of(context).colorScheme.primary.withOpacity(0.15),
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.primary.withValues(alpha: 0.15),
                             blurRadius: 8,
                             offset: const Offset(0, 3),
                           ),
@@ -779,7 +787,9 @@ class _SoloGameScreenState extends ConsumerState<SoloGameScreen>
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
-                            color: Theme.of(context).colorScheme.onPrimaryContainer,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onPrimaryContainer,
                             letterSpacing: 0.3,
                           ),
                           textAlign: TextAlign.center,

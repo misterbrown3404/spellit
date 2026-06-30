@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 import 'package:spellit/features/auth/auth_service.dart';
 import 'package:spellit/features/chat/chat_service.dart';
 import 'package:spellit/features/lobby/room_service.dart';
@@ -23,7 +22,9 @@ class _GlobalChatTabState extends ConsumerState<GlobalChatTab> {
   @override
   void initState() {
     super.initState();
-    _messageController = TextEditingController(text: widget.initialMessage ?? '');
+    _messageController = TextEditingController(
+      text: widget.initialMessage ?? '',
+    );
   }
 
   @override
@@ -35,23 +36,25 @@ class _GlobalChatTabState extends ConsumerState<GlobalChatTab> {
   Future<void> _sendMessage() async {
     final text = _messageController.text;
     if (text.trim().isEmpty) return;
-    
+
     final user = ref.read(authStateProvider).value;
     if (user == null) return;
-    
+
     _messageController.clear();
-    
+
     try {
-      await ref.read(chatServiceProvider).sendGlobalMessage(
-        user.uid,
-        user.displayName?.isEmpty ?? true ? 'Player' : user.displayName!,
-        text,
-      );
+      await ref
+          .read(chatServiceProvider)
+          .sendGlobalMessage(
+            user.uid,
+            user.displayName?.isEmpty ?? true ? 'Player' : user.displayName!,
+            text,
+          );
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     }
   }
@@ -67,10 +70,9 @@ class _GlobalChatTabState extends ConsumerState<GlobalChatTab> {
         builder: (_) => const Center(child: CircularProgressIndicator()),
       );
 
-      final room = await ref.read(roomServiceProvider).joinRoom(
-        roomCode: code,
-        playerId: user.uid,
-      );
+      final room = await ref
+          .read(roomServiceProvider)
+          .joinRoom(roomCode: code, playerId: user.uid);
 
       if (mounted) {
         Navigator.pop(context); // Dismiss loading
@@ -87,7 +89,10 @@ class _GlobalChatTabState extends ConsumerState<GlobalChatTab> {
       if (mounted) {
         Navigator.pop(context); // Dismiss loading
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not join: $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text('Could not join: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }
@@ -136,7 +141,7 @@ class _GlobalChatTabState extends ConsumerState<GlobalChatTab> {
   Widget build(BuildContext context) {
     final chatService = ref.watch(chatServiceProvider);
     final currentUser = ref.watch(authStateProvider).value;
-    
+
     return Column(
       children: [
         Expanded(
@@ -146,7 +151,7 @@ class _GlobalChatTabState extends ConsumerState<GlobalChatTab> {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator());
               }
-              
+
               final messages = snapshot.data ?? [];
               if (messages.isEmpty) {
                 return Center(
@@ -156,7 +161,7 @@ class _GlobalChatTabState extends ConsumerState<GlobalChatTab> {
                   ),
                 );
               }
-              
+
               return ListView.builder(
                 reverse: true,
                 padding: const EdgeInsets.all(16),
@@ -164,7 +169,7 @@ class _GlobalChatTabState extends ConsumerState<GlobalChatTab> {
                 itemBuilder: (context, index) {
                   final msg = messages[index];
                   final isMe = msg.senderId == currentUser?.uid;
-                  
+
                   return _buildMessageBubble(msg, isMe);
                 },
               );
@@ -193,12 +198,16 @@ class _GlobalChatTabState extends ConsumerState<GlobalChatTab> {
               ? Theme.of(context).colorScheme.primary
               : Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(16).copyWith(
-            bottomRight: isMe ? const Radius.circular(0) : const Radius.circular(16),
-            bottomLeft: !isMe ? const Radius.circular(0) : const Radius.circular(16),
+            bottomRight: isMe
+                ? const Radius.circular(0)
+                : const Radius.circular(16),
+            bottomLeft: !isMe
+                ? const Radius.circular(0)
+                : const Radius.circular(16),
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 5,
               offset: const Offset(0, 2),
             ),
@@ -264,10 +273,10 @@ class _GlobalChatTabState extends ConsumerState<GlobalChatTab> {
                   fontSize: 16,
                 ),
               ),
-          ]
-        )
-        )
-        );
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildMessageInput() {
@@ -277,7 +286,7 @@ class _GlobalChatTabState extends ConsumerState<GlobalChatTab> {
         color: Theme.of(context).cardColor,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, -5),
           ),
@@ -296,8 +305,11 @@ class _GlobalChatTabState extends ConsumerState<GlobalChatTab> {
                     borderSide: BorderSide.none,
                   ),
                   filled: true,
-                  fillColor: Colors.grey.withOpacity(0.1),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  fillColor: Colors.grey.withValues(alpha: 0.1),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 10,
+                  ),
                 ),
                 textCapitalization: TextCapitalization.sentences,
                 onSubmitted: (_) => _sendMessage(),

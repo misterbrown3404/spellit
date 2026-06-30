@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -49,7 +48,9 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
     } on FirebaseException catch (e) {
       if (e.code == 'unavailable') {
         // Transient error — silently ignore, app will show defaults
-        print('Firestore unavailable while loading shop data. Using defaults.');
+        debugPrint(
+          'Firestore unavailable while loading shop data. Using defaults.',
+        );
       } else {
         rethrow;
       }
@@ -108,10 +109,13 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
     if (confirmed != true) return;
 
     try {
-      await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
-        'coins': FieldValue.increment(-powerUp.coinPrice),
-        'inventory.${powerUp.id}': FieldValue.increment(1),
-      });
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .update({
+            'coins': FieldValue.increment(-powerUp.coinPrice),
+            'inventory.${powerUp.id}': FieldValue.increment(1),
+          });
 
       ref.read(audioManagerProvider).playSfx(SoundEffect.coinCollect);
 
@@ -197,13 +201,17 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
             margin: const EdgeInsets.only(right: 8),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: Colors.amber.withOpacity(0.2),
+              color: Colors.amber.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.monetization_on, color: Colors.amber, size: 20),
+                const Icon(
+                  Icons.monetization_on,
+                  color: Colors.amber,
+                  size: 20,
+                ),
                 const SizedBox(width: 4),
                 Text(
                   '$_playerCoins',
@@ -220,7 +228,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
             margin: const EdgeInsets.only(right: 16),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: Colors.purple.withOpacity(0.2),
+              color: Colors.purple.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Row(
@@ -242,11 +250,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
       ),
       body: TabBarView(
         controller: _tabController,
-        children: [
-          _buildPowerUpsTab(),
-          _buildCoinsTab(),
-          _buildPremiumTab(),
-        ],
+        children: [_buildPowerUpsTab(), _buildCoinsTab(), _buildPremiumTab()],
       ),
     );
   }
@@ -267,129 +271,133 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
         final canAfford = _playerCoins >= powerUp.coinPrice;
 
         return Card(
-          clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            onTap: canAfford ? () => _purchaseItem(powerUp) : null,
-            child: Column(
-              children: [
-                // Header with icon
-                Container(
-                  height: 80,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        _getColorForPowerUp(powerUp.type).withOpacity(0.3),
-                        _getColorForPowerUp(powerUp.type).withOpacity(0.1),
-                      ],
-                    ),
-                  ),
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      Icon(
-                        _getIconForPowerUp(powerUp.type),
-                        size: 48,
-                        color: _getColorForPowerUp(powerUp.type),
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                onTap: canAfford ? () => _purchaseItem(powerUp) : null,
+                child: Column(
+                  children: [
+                    // Header with icon
+                    Container(
+                      height: 80,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            _getColorForPowerUp(
+                              powerUp.type,
+                            ).withValues(alpha: 0.3),
+                            _getColorForPowerUp(
+                              powerUp.type,
+                            ).withValues(alpha: 0.1),
+                          ],
+                        ),
                       ),
-                      // Owned badge
-                      if (owned > 0)
-                        Positioned(
-                          top: 8,
-                          right: 8,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.green,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              'x$owned',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12,
-                              ),
-                            ),
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          Icon(
+                            _getIconForPowerUp(powerUp.type),
+                            size: 48,
+                            color: _getColorForPowerUp(powerUp.type),
                           ),
-                        ),
-                    ],
-                  ),
-                ),
-
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          powerUp.name,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          powerUp.description,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey.shade600,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const Spacer(),
-                        // Price
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(
-                            vertical: 8,
-                          ),
-                          decoration: BoxDecoration(
-                            color: canAfford
-                                ? Colors.amber.withOpacity(0.2)
-                                : Colors.grey.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.monetization_on,
-                                color: canAfford ? Colors.amber : Colors.grey,
-                                size: 18,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                '${powerUp.coinPrice}',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: canAfford ? null : Colors.grey,
+                          // Owned badge
+                          if (owned > 0)
+                            Positioned(
+                              top: 8,
+                              right: 8,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.green,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  'x$owned',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12,
+                                  ),
                                 ),
                               ),
-                            ],
-                          ),
-                        ),
-                      ],
+                            ),
+                        ],
+                      ),
                     ),
-                  ),
+
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              powerUp.name,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              powerUp.description,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey.shade600,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const Spacer(),
+                            // Price
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              decoration: BoxDecoration(
+                                color: canAfford
+                                    ? Colors.amber.withValues(alpha: 0.2)
+                                    : Colors.grey.withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.monetization_on,
+                                    color: canAfford
+                                        ? Colors.amber
+                                        : Colors.grey,
+                                    size: 18,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '${powerUp.coinPrice}',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: canAfford ? null : Colors.grey,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ),
-        ).animate().fadeIn(delay: (100 * index).ms).scale(
-              begin: const Offset(0.8, 0.8),
-              duration: 300.ms,
-            );
+              ),
+            )
+            .animate()
+            .fadeIn(delay: (100 * index).ms)
+            .scale(begin: const Offset(0.8, 0.8), duration: 300.ms);
       },
     );
   }
@@ -447,8 +455,10 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
                 if (bonus > 0) ...[
                   const SizedBox(width: 8),
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.green,
                       borderRadius: BorderRadius.circular(12),
@@ -469,9 +479,9 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
             trailing: FilledButton(
               onPressed: () {
                 // Implement in-app purchase
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Coming soon!')),
-                );
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(const SnackBar(content: Text('Coming soon!')));
               },
               child: Text(price),
             ),
@@ -494,18 +504,11 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [
-                    Colors.purple.shade300,
-                    Colors.purple.shade700,
-                  ],
+                  colors: [Colors.purple.shade300, Colors.purple.shade700],
                 ),
                 borderRadius: BorderRadius.circular(24),
               ),
-              child: const Icon(
-                Icons.diamond,
-                size: 80,
-                color: Colors.white,
-              ),
+              child: const Icon(Icons.diamond, size: 80, color: Colors.white),
             ).animate().scale(duration: 600.ms, curve: Curves.elasticOut),
             const SizedBox(height: 24),
             const Text(
@@ -519,10 +522,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
             const SizedBox(height: 16),
             Text(
               'Unlock the full experience',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey.shade600,
-              ),
+              style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
             ),
             const SizedBox(height: 32),
             _buildPremiumFeature(Icons.block, 'No Ads'),
@@ -535,9 +535,9 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
               width: double.infinity,
               child: FilledButton(
                 onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Coming soon!')),
-                  );
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(const SnackBar(content: Text('Coming soon!')));
                 },
                 style: FilledButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
@@ -567,10 +567,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
         children: [
           Icon(icon, color: Colors.purple),
           const SizedBox(width: 12),
-          Text(
-            text,
-            style: const TextStyle(fontSize: 16),
-          ),
+          Text(text, style: const TextStyle(fontSize: 16)),
         ],
       ),
     );

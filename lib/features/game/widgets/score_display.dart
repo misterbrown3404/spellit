@@ -20,7 +20,6 @@ class ScoreDisplay extends StatefulWidget {
 }
 
 class _ScoreDisplayState extends State<ScoreDisplay> {
-  int _previousScore = 0;
   bool _showScoreIncrease = false;
   int _scoreIncrease = 0;
 
@@ -31,9 +30,8 @@ class _ScoreDisplayState extends State<ScoreDisplay> {
       setState(() {
         _scoreIncrease = widget.score - oldWidget.score;
         _showScoreIncrease = true;
-        _previousScore = oldWidget.score;
       });
-      
+
       Future.delayed(const Duration(milliseconds: 1500), () {
         if (mounted) {
           setState(() {
@@ -53,7 +51,7 @@ class _ScoreDisplayState extends State<ScoreDisplay> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(10),
         border: widget.isDoublePoints
             ? Border.all(color: Colors.purple, width: 2)
@@ -77,7 +75,7 @@ class _ScoreDisplayState extends State<ScoreDisplay> {
             ),
             const SizedBox(width: 6),
           ],
-          
+
           Flexible(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -86,14 +84,11 @@ class _ScoreDisplayState extends State<ScoreDisplay> {
                 if (widget.playerName != null)
                   Text(
                     widget.playerName!,
-                    style: TextStyle(
-                      fontSize: 9,
-                      color: Colors.grey.shade600,
-                    ),
+                    style: TextStyle(fontSize: 9, color: Colors.grey.shade600),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                
+
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -106,7 +101,7 @@ class _ScoreDisplayState extends State<ScoreDisplay> {
                         fontFeatures: const [FontFeature.tabularFigures()],
                       ),
                     ),
-                    
+
                     // Double points indicator
                     if (widget.isDoublePoints)
                       Container(
@@ -128,20 +123,25 @@ class _ScoreDisplayState extends State<ScoreDisplay> {
                           ),
                         ),
                       ).animate(onPlay: (c) => c.repeat()).shimmer(),
-                    
+
                     // Score increase animation
                     if (_showScoreIncrease)
                       Padding(
-                        padding: const EdgeInsets.only(left: 4),
-                        child: Text(
-                          '+$_scoreIncrease',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.green,
-                          ),
-                        ),
-                      ).animate().fadeIn().slideY(begin: 0.5).then().fadeOut(delay: 1000.ms),
+                            padding: const EdgeInsets.only(left: 4),
+                            child: Text(
+                              '+$_scoreIncrease',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.green,
+                              ),
+                            ),
+                          )
+                          .animate()
+                          .fadeIn()
+                          .slideY(begin: 0.5)
+                          .then()
+                          .fadeOut(delay: 1000.ms),
                   ],
                 ),
               ],

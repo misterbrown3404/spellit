@@ -6,7 +6,6 @@ import 'package:spellit/features/tutorial/screens/tutorial_screen.dart';
 import 'package:spellit/features/settings/screens/legal_screen.dart';
 import '../../../core/audio_manager.dart';
 import '../../../main.dart';
-import '../../auth/auth_service.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -28,10 +27,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Future<void> _loadSettings() async {
     _settingsService = ref.read(settingsServiceProvider);
     await _settingsService.init();
+    if (!mounted) return;
 
-    ref.read(musicEnabledProvider.notifier).state = _settingsService.isMusicEnabled;
+    ref.read(musicEnabledProvider.notifier).state =
+        _settingsService.isMusicEnabled;
     ref.read(sfxEnabledProvider.notifier).state = _settingsService.isSfxEnabled;
-    ref.read(hapticEnabledProvider.notifier).state = _settingsService.isHapticEnabled;
+    ref.read(hapticEnabledProvider.notifier).state =
+        _settingsService.isHapticEnabled;
     ref.read(darkModeProvider.notifier).state = _settingsService.isDarkMode;
     ref.read(musicVolumeProvider.notifier).state = _settingsService.musicVolume;
     ref.read(sfxVolumeProvider.notifier).state = _settingsService.sfxVolume;
@@ -46,9 +48,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     final musicEnabled = ref.watch(musicEnabledProvider);
@@ -57,12 +57,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final darkMode = ref.watch(darkModeProvider);
     final musicVolume = ref.watch(musicVolumeProvider);
     final sfxVolume = ref.watch(sfxVolumeProvider);
-    final currentPlayer = ref.watch(currentPlayerProvider);
+    // final currentPlayer = ref.watch(currentPlayerProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Settings'),
-      ),
+      appBar: AppBar(title: const Text('Settings')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -139,8 +137,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             value: darkMode,
             onChanged: (value) async {
               ref.read(darkModeProvider.notifier).state = value;
-              ref.read(themeProvider.notifier).state =
-                  value ? ThemeMode.dark : ThemeMode.light;
+              ref.read(themeProvider.notifier).state = value
+                  ? ThemeMode.dark
+                  : ThemeMode.light;
               await _settingsService.setDarkMode(value);
             },
           ),
@@ -216,26 +215,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             onTap: () => _showAboutDialog(),
           ),
 
-_buildNavigationTile(
-  icon: Icons.school,
-  title: 'View Tutorial',
-  subtitle: 'Learn how to play again',
-  onTap: () async {
-    final tutorialService = ref.read(tutorialServiceProvider);
-    await tutorialService.resetTutorial();
-    
-    if (mounted) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => TutorialScreen(
-            onComplete: () => Navigator.pop(context),
+          _buildNavigationTile(
+            icon: Icons.school,
+            title: 'View Tutorial',
+            subtitle: 'Learn how to play again',
+            onTap: _viewTutorial,
           ),
-        ),
-      );
-    }
-  },
-),
 
           const SizedBox(height: 24),
 
@@ -244,7 +229,6 @@ _buildNavigationTile(
       ),
     );
   }
-
 
   Widget _buildSectionHeader(String title) {
     return Padding(
@@ -299,12 +283,7 @@ _buildNavigationTile(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(title),
-                  Slider(
-                    value: value,
-                    onChanged: onChanged,
-                    min: 0,
-                    max: 1,
-                  ),
+                  Slider(value: value, onChanged: onChanged, min: 0, max: 1),
                 ],
               ),
             ),
@@ -333,28 +312,11 @@ _buildNavigationTile(
     );
   }
 
-  Widget _buildDangerTile({
-    required IconData icon,
-    required String title,
-    required VoidCallback onTap,
-  }) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      color: Colors.red.withOpacity(0.1),
-      child: ListTile(
-        leading: Icon(icon, color: Colors.red),
-        title: Text(title, style: const TextStyle(color: Colors.red)),
-        trailing: const Icon(Icons.chevron_right, color: Colors.red),
-        onTap: onTap,
-      ),
-    );
-  }
-
   void _showTimerPicker() {
     final options = [60, 90, 120, 180, 240, 300];
     showModalBottomSheet(
       context: context,
-      builder: (context) => Column(
+      builder: (ctx) => Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           const Padding(
@@ -364,22 +326,38 @@ _buildNavigationTile(
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
           ),
-          ...options.map((seconds) => ListTile(
-                leading: const Icon(Icons.timer),
-                title: Text('${seconds ~/ 60}:${(seconds % 60).toString().padLeft(2, '0')}'),
-                trailing: _settingsService.defaultTimer == seconds
-                    ? const Icon(Icons.check, color: Colors.green)
-                    : null,
-                onTap: () async {
-                  await _settingsService.setDefaultTimer(seconds);
-                  if (mounted) {
-                    setState(() {});
-                    Navigator.pop(context);
-                  }
-                },
-              )),
+          ...options.map(
+            (seconds) => ListTile(
+              leading: const Icon(Icons.timer),
+              title: Text(
+                '${seconds ~/ 60}:${(seconds % 60).toString().padLeft(2, '0')}',
+              ),
+              trailing: _settingsService.defaultTimer == seconds
+                  ? const Icon(Icons.check, color: Colors.green)
+                  : null,
+              onTap: () async {
+                await _settingsService.setDefaultTimer(seconds);
+                if (!ctx.mounted) return;
+                setState(() {});
+                Navigator.pop(ctx);
+              },
+            ),
+          ),
           const SizedBox(height: 16),
         ],
+      ),
+    );
+  }
+
+  Future<void> _viewTutorial() async {
+    final tutorialService = ref.read(tutorialServiceProvider);
+    await tutorialService.resetTutorial();
+    if (!mounted) return; // ← State's mounted is correct here
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) =>
+            TutorialScreen(onComplete: () => Navigator.pop(context)),
       ),
     );
   }
@@ -388,7 +366,7 @@ _buildNavigationTile(
     final options = [3, 4, 5, 6];
     showModalBottomSheet(
       context: context,
-      builder: (context) => Column(
+      builder: (ctx) => Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           const Padding(
@@ -398,20 +376,21 @@ _buildNavigationTile(
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
           ),
-          ...options.map((length) => ListTile(
-                leading: const Icon(Icons.text_fields),
-                title: Text('$length letters'),
-                trailing: _settingsService.defaultWordLength == length
-                    ? const Icon(Icons.check, color: Colors.green)
-                    : null,
-                onTap: () async {
-                  await _settingsService.setDefaultWordLength(length);
-                  if (mounted) {
-                    setState(() {});
-                    Navigator.pop(context);
-                  }
-                },
-              )),
+          ...options.map(
+            (length) => ListTile(
+              leading: const Icon(Icons.text_fields),
+              title: Text('$length letters'),
+              trailing: _settingsService.defaultWordLength == length
+                  ? const Icon(Icons.check, color: Colors.green)
+                  : null,
+              onTap: () async {
+                await _settingsService.setDefaultWordLength(length);
+                if (!ctx.mounted) return;
+                setState(() {});
+                Navigator.pop(ctx);
+              },
+            ),
+          ),
           const SizedBox(height: 16),
         ],
       ),
@@ -421,7 +400,7 @@ _buildNavigationTile(
   void _showHowToPlay() {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (ctx) => AlertDialog(
         title: const Text('How to Play'),
         content: const SingleChildScrollView(
           child: Column(
@@ -476,7 +455,7 @@ _buildNavigationTile(
         ),
         actions: [
           FilledButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(ctx),
             child: const Text('Got it!'),
           ),
         ],

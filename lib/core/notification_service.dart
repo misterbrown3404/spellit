@@ -9,20 +9,32 @@ final notificationServiceProvider = Provider((ref) => NotificationService());
 class NotificationService {
   final FirebaseMessaging _messaging = FirebaseMessaging.instance;
 
+  static const _permissionTimeout = Duration(seconds: 5);
+  static const _apnsTokenTimeout = Duration(seconds: 5);
+  static const _fcmTokenTimeout = Duration(seconds: 5);
+
   Future<void> init() async {
-    await _messaging.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
+    try {
+      await _messaging
+          .requestPermission(
+            alert: true,
+            badge: true,
+            sound: true,
+          )
+          .timeout(_permissionTimeout);
+    } catch (e) {
+      debugPrint('Notification permission request failed: $e');
+    }
 
     try {
-      final apnsToken = await _messaging.getAPNSToken();
+      final apnsToken = await _messaging
+          .getAPNSToken()
+          .timeout(_apnsTokenTimeout);
       if (apnsToken != null) {
         debugPrint('APNS token received');
       }
     } catch (e) {
-      debugPrint('APNS token not yet available, will retry: $e');
+      debugPrint('APNS token fetch failed: $e');
     }
 
     final completer = Completer<String?>();
@@ -30,14 +42,16 @@ class NotificationService {
     tokenSub = _messaging.onTokenRefresh.listen((token) {
       if (!completer.isCompleted) completer.complete(token);
     });
-    
+
     String? fcmToken;
     try {
-      fcmToken = await _messaging.getToken();
+      fcmToken = await _messaging
+          .getToken()
+          .timeout(_fcmTokenTimeout);
     } catch (e) {
-      debugPrint('Error getting FCM token: $e');
+      debugPrint('FCM token fetch failed: $e');
     }
-    
+
     tokenSub.cancel();
     if (fcmToken != null) {
       debugPrint('FCM Token: $fcmToken');
@@ -58,7 +72,7 @@ class NotificationService {
 
   Future<void> saveTokenToFirestore(String userId) async {
     try {
-      final token = await _messaging.getToken();
+      final token = await _messaging.getToken().timeout(_fcmTokenTimeout);
       if (token != null) {
         await FirebaseFirestore.instance.collection('users').doc(userId).update({
           'fcmToken': token,

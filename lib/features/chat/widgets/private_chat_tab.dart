@@ -19,9 +19,7 @@ class PrivateChatTab extends ConsumerWidget {
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Messages'),
-      ),
+      appBar: AppBar(title: const Text('Messages')),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _openSearch(context),
         icon: const Icon(Icons.edit),
@@ -46,7 +44,9 @@ class PrivateChatTab extends ConsumerWidget {
                     Icon(
                       Icons.chat_bubble_outline,
                       size: 80,
-                      color: Theme.of(context).colorScheme.primary.withOpacity(0.5),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.primary.withValues(alpha: 0.5),
                     ),
                     const SizedBox(height: 24),
                     Text(
@@ -58,9 +58,9 @@ class PrivateChatTab extends ConsumerWidget {
                       "Tap a player's name in the Global Chat or use New Chat to start a private conversation.",
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Colors.grey,
-                            height: 1.5,
-                          ),
+                        color: Colors.grey,
+                        height: 1.5,
+                      ),
                     ),
                   ],
                 ),
@@ -72,20 +72,23 @@ class PrivateChatTab extends ConsumerWidget {
             itemCount: recentChats.length,
             itemBuilder: (context, index) {
               final chatData = recentChats[index];
-              final participants = List<String>.from(chatData['participants'] ?? []);
+              final participants = List<String>.from(
+                chatData['participants'] ?? [],
+              );
               final otherUserId = participants.firstWhere(
                 (id) => id != currentUser.uid,
                 orElse: () => 'Unknown',
               );
 
               final lastMessage = chatData['lastMessage'] ?? 'No messages';
-              final lastMessageTime =
-                  (chatData['lastMessageTime'] is DateTime)
-                      ? chatData['lastMessageTime'] as DateTime
-                      : DateTime.now();
+              final lastMessageTime = (chatData['lastMessageTime'] is DateTime)
+                  ? chatData['lastMessageTime'] as DateTime
+                  : DateTime.now();
 
               final peerName =
-                  (chatData['name_$otherUserId'] as String?) ?? chatData['otherUserName'] as String? ?? 'Player';
+                  (chatData['name_$otherUserId'] as String?) ??
+                  chatData['otherUserName'] as String? ??
+                  'Player';
 
               return ListTile(
                 leading: const CircleAvatar(
@@ -103,10 +106,7 @@ class PrivateChatTab extends ConsumerWidget {
                 ),
                 trailing: Text(
                   DateFormat('MMM d, HH:mm').format(lastMessageTime),
-                  style: TextStyle(
-                    color: Colors.grey.shade600,
-                    fontSize: 12,
-                  ),
+                  style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
                 ),
                 onTap: () {
                   Navigator.push(
@@ -167,7 +167,9 @@ class PrivateChatTab extends ConsumerWidget {
                 if (snapshot.docs.isEmpty) {
                   if (outerContext.mounted) {
                     ScaffoldMessenger.of(outerContext).showSnackBar(
-                      const SnackBar(content: Text('No player found with that name')),
+                      const SnackBar(
+                        content: Text('No player found with that name'),
+                      ),
                     );
                   }
                   return;

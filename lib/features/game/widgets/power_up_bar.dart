@@ -61,9 +61,10 @@ class PowerUpBar extends StatelessWidget {
           _buildPowerUpButton(
             context: context,
             type: PowerUpType.shield,
-            icon: Icons.shield, 
-            color: Colors.blueGrey, 
-            count: inventory['shield'] ?? 0),
+            icon: Icons.shield,
+            color: Colors.blueGrey,
+            count: inventory['shield'] ?? 0,
+          ),
         ],
       ),
     );
@@ -88,23 +89,16 @@ class PowerUpBar extends StatelessWidget {
         height: 56,
         decoration: BoxDecoration(
           color: canUse
-              ? color.withOpacity(0.2)
-              : Colors.grey.withOpacity(0.1),
+              ? color.withValues(alpha: 0.2)
+              : Colors.grey.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: canUse ? color : Colors.grey,
-            width: 2,
-          ),
+          border: Border.all(color: canUse ? color : Colors.grey, width: 2),
         ),
         child: Stack(
           alignment: Alignment.center,
           children: [
-            Icon(
-              icon,
-              color: canUse ? color : Colors.grey,
-              size: 28,
-            ),
-            
+            Icon(icon, color: canUse ? color : Colors.grey, size: 28),
+
             // Count badge
             if (count > 0)
               Positioned(
@@ -126,7 +120,7 @@ class PowerUpBar extends StatelessWidget {
                   ),
                 ),
               ),
-            
+
             // Cooldown overlay
             if (isOnCooldown)
               Container(

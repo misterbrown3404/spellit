@@ -7,9 +7,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:spellit/features/game/screens/multiplayer_game_screen.dart';
 import '../../../models/room_model.dart';
-import '../../auth/auth_service.dart';
-import '../room_service.dart';
 
+import '../room_service.dart';
 
 class WaitingRoomScreen extends ConsumerStatefulWidget {
   final String roomId;
@@ -119,7 +118,9 @@ class _WaitingRoomScreenState extends ConsumerState<WaitingRoomScreen> {
                         IconButton(
                           icon: const Icon(Icons.copy),
                           onPressed: () {
-                            Clipboard.setData(ClipboardData(text: room.roomCode));
+                            Clipboard.setData(
+                              ClipboardData(text: room.roomCode),
+                            );
                             final inviteText = room.isPublic
                                 ? 'Join my public SpellIt game! Room code: ${room.roomCode}'
                                 : 'Join my private SpellIt game! Room code: ${room.roomCode}';
@@ -225,8 +226,11 @@ class _WaitingRoomScreenState extends ConsumerState<WaitingRoomScreen> {
                         String playerName = 'Loading...';
                         int playerElo = 1000;
 
-                        if (playerSnapshot.hasData && playerSnapshot.data!.exists) {
-                          final playerData = playerSnapshot.data!.data() as Map<String, dynamic>;
+                        if (playerSnapshot.hasData &&
+                            playerSnapshot.data!.exists) {
+                          final playerData =
+                              playerSnapshot.data!.data()
+                                  as Map<String, dynamic>;
                           playerName = playerData['displayName'] ?? 'Player';
                           playerElo = playerData['eloRating'] ?? 1000;
                         }
@@ -290,7 +294,9 @@ class _WaitingRoomScreenState extends ConsumerState<WaitingRoomScreen> {
                             subtitle: Text('ELO: $playerElo'),
                             trailing: isHost && !isPlayerHost
                                 ? IconButton(
-                                    icon: const Icon(Icons.remove_circle_outline),
+                                    icon: const Icon(
+                                      Icons.remove_circle_outline,
+                                    ),
                                     color: Colors.red,
                                     onPressed: () => _kickPlayer(playerId),
                                   )
@@ -344,7 +350,9 @@ class _WaitingRoomScreenState extends ConsumerState<WaitingRoomScreen> {
                               icon: const Icon(Icons.play_arrow),
                               label: const Text('Start Game'),
                               style: FilledButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 16,
+                                ),
                               ),
                             ),
                           ),
@@ -371,17 +379,11 @@ class _WaitingRoomScreenState extends ConsumerState<WaitingRoomScreen> {
         const SizedBox(height: 4),
         Text(
           value,
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-          ),
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
         ),
         Text(
           label,
-          style: TextStyle(
-            fontSize: 12,
-            color: Colors.grey.shade600,
-          ),
+          style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
         ),
       ],
     );
@@ -392,9 +394,9 @@ class _WaitingRoomScreenState extends ConsumerState<WaitingRoomScreen> {
       await ref.read(roomServiceProvider).startGame(widget.roomId);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to start game: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to start game: $e')));
       }
     }
   }
@@ -425,10 +427,9 @@ class _WaitingRoomScreenState extends ConsumerState<WaitingRoomScreen> {
     );
 
     if (confirmed == true && mounted) {
-      await ref.read(roomServiceProvider).leaveRoom(
-        roomId: widget.roomId,
-        playerId: odid,
-      );
+      await ref
+          .read(roomServiceProvider)
+          .leaveRoom(roomId: widget.roomId, playerId: odid);
       if (mounted) {
         Navigator.pop(context);
       }
@@ -456,10 +457,9 @@ class _WaitingRoomScreenState extends ConsumerState<WaitingRoomScreen> {
     );
 
     if (confirmed == true) {
-      await ref.read(roomServiceProvider).leaveRoom(
-        roomId: widget.roomId,
-        playerId: playerId,
-      );
+      await ref
+          .read(roomServiceProvider)
+          .leaveRoom(roomId: widget.roomId, playerId: playerId);
     }
   }
 }
