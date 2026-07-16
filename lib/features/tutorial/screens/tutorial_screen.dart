@@ -6,9 +6,9 @@ import '../../../core/tutorial_service.dart';
 
 
 class TutorialScreen extends ConsumerStatefulWidget {
-  final VoidCallback onComplete;
+  final VoidCallback? onComplete;
 
-  const TutorialScreen({super.key, required this.onComplete});
+  const TutorialScreen({super.key, this.onComplete});
 
   @override
   ConsumerState<TutorialScreen> createState() => _TutorialScreenState();
@@ -24,7 +24,7 @@ class _TutorialScreenState extends ConsumerState<TutorialScreen> {
   void _onTutorialComplete() async {
     final tutorialService = ref.read(tutorialServiceProvider);
     await tutorialService.setTutorialCompleted(true);
-    widget.onComplete();
+    widget.onComplete?.call();
   }
 
   void _onSkip() async {

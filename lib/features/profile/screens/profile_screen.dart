@@ -66,10 +66,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ),
           FilledButton(
             onPressed: () async {
-              Navigator.pop(context); // Close dialog
+              Navigator.pop(ctx); // close dialog only
               await ref.read(authServiceProvider).signOut();
-              if (!mounted) return; // ← State's mounted is correct here
-              Navigator.pop(context);
+              // GoRouter redirect handles navigation to /login automatically
             },
             child: const Text('Sign Out'),
           ),
@@ -97,13 +96,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               Navigator.pop(ctx); // close dialog before await
               try {
                 await ref.read(authServiceProvider).deleteAccount();
-                if (!mounted) return; // ← guard after await
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Account deleted successfully')),
-                );
-                Navigator.pop(context);
+                // GoRouter redirect handles navigation to /login automatically
               } catch (e) {
-                if (!mounted) return; // ← guard in catch too
+                if (!mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text(e.toString().replaceAll('Exception: ', '')),
@@ -210,8 +205,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           }
 
           return CustomScrollView(
+            physics: const BouncingScrollPhysics(),
             slivers: [
-              // ── Hero SliverAppBar ──────────────────────────────────────
               SliverAppBar(
                 expandedHeight: 240,
                 pinned: true,

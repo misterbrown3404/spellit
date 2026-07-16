@@ -357,7 +357,7 @@ class _GoogleSignInButton extends StatelessWidget {
                 ),
                 child: ClipOval(
                   child: Image.asset(
-                    'assets/icons/google.jpeg',
+                    'assets/icons/Google.jp g',
                     fit: BoxFit.cover,
                     errorBuilder: (_, __, ___) => const Icon(
                       Icons.g_mobiledata,

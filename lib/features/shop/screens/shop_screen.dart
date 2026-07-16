@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../models/power_up_model.dart';
 import '../../auth/auth_service.dart';
 import '../../../core/audio_manager.dart';
+import '../shop_service.dart';
 
 class ShopScreen extends ConsumerStatefulWidget {
   const ShopScreen({super.key});
@@ -32,28 +32,18 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
     if (user == null) return;
 
     try {
-      final doc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .get();
+      final data = await ref.read(shopServiceProvider).loadPlayerData(user.uid);
 
-      if (doc.exists && mounted) {
-        final data = doc.data()!;
+      if (mounted) {
         setState(() {
-          _playerCoins = data['coins'] ?? 0;
-          _playerGems = data['gems'] ?? 0;
-          _playerInventory = Map<String, int>.from(data['inventory'] ?? {});
+          _playerCoins = data.coins;
+          _playerGems = data.gems;
+          _playerInventory = data.inventory;
         });
       }
-    } on FirebaseException catch (e) {
-      if (e.code == 'unavailable') {
-        // Transient error — silently ignore, app will show defaults
-        debugPrint(
-          'Firestore unavailable while loading shop data. Using defaults.',
-        );
-      } else {
-        rethrow;
-      }
+    } catch (_) {
+      if (!mounted) return;
+      _showError('Could not load shop data. Pull back and try again.');
     }
   }
 
@@ -109,24 +99,25 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
     if (confirmed != true) return;
 
     try {
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .update({
-            'coins': FieldValue.increment(-powerUp.coinPrice),
-            'inventory.${powerUp.id}': FieldValue.increment(1),
-          });
+      final result = await ref.read(shopServiceProvider).purchasePowerUp(
+            userId: user.uid,
+            powerUp: powerUp,
+          );
+
+      if (!mounted) return;
 
       ref.read(audioManagerProvider).playSfx(SoundEffect.coinCollect);
 
       setState(() {
-        _playerCoins -= powerUp.coinPrice;
-        _playerInventory[powerUp.id] = (_playerInventory[powerUp.id] ?? 0) + 1;
+        _playerCoins = result.coins;
+        _playerInventory = result.inventory;
       });
 
       _showPurchaseSuccess(powerUp.name);
+    } on ShopException catch (e) {
+      _showError(e.message);
     } catch (e) {
-      _showError('Purchase failed. Please try again.');
+      _showError('Purchase failed. Check your connection and try again.');
     }
   }
 
@@ -248,21 +239,38 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
           ),
         ],
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [_buildPowerUpsTab(), _buildCoinsTab(), _buildPremiumTab()],
+      body: SafeArea(
+        child: TabBarView(
+          controller: _tabController,
+          children: [_buildPowerUpsTab(), _buildCoinsTab(), _buildPremiumTab()],
+        ),
       ),
     );
   }
 
   Widget _buildPowerUpsTab() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    int crossAxisCount;
+    double childAspectRatio;
+
+    if (screenWidth < 600) {
+      crossAxisCount = 2;
+      childAspectRatio = 0.72;
+    } else if (screenWidth < 900) {
+      crossAxisCount = 3;
+      childAspectRatio = 0.8;
+    } else {
+      crossAxisCount = 4;
+      childAspectRatio = 0.85;
+    }
+
     return GridView.builder(
       padding: const EdgeInsets.all(16),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: crossAxisCount,
         crossAxisSpacing: 12,
         mainAxisSpacing: 12,
-        childAspectRatio: 0.75,
+        childAspectRatio: childAspectRatio,
       ),
       itemCount: PowerUpModel.allPowerUps.length,
       itemBuilder: (context, index) {
@@ -293,6 +301,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
                             ).withValues(alpha: 0.1),
                           ],
                         ),
+                        borderRadius: BorderRadius.circular(12),
                       ),
                       child: Stack(
                         alignment: Alignment.center,
@@ -346,16 +355,17 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
                               overflow: TextOverflow.ellipsis,
                             ),
                             const SizedBox(height: 4),
-                            Text(
-                              powerUp.description,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey.shade600,
+                            Expanded(
+                              child: Text(
+                                powerUp.description,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey.shade600,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
                             ),
-                            const Spacer(),
                             // Price
                             Container(
                               width: double.infinity,
@@ -421,69 +431,97 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
 
         return Card(
           margin: const EdgeInsets.only(bottom: 12),
-          child: ListTile(
-            contentPadding: const EdgeInsets.all(16),
-            leading: Stack(
-              alignment: Alignment.center,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  width: 60,
-                  height: 60,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Colors.amber.shade300, Colors.amber.shade600],
-                    ),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(
-                    Icons.monetization_on,
-                    color: Colors.white,
-                    size: 36,
-                  ),
-                ),
-              ],
-            ),
-            title: Row(
-              children: [
-                Text(
-                  '$coins',
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                if (bonus > 0) ...[
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.green,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      '+$bonus BONUS',
-                      style: const TextStyle(
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Container(
+                      width: 60,
+                      height: 60,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            Colors.amber.shade300,
+                            Colors.amber.shade600,
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.monetization_on,
                         color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
+                        size: 36,
                       ),
                     ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  '$coins',
+                                  style: const TextStyle(
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              if (bonus > 0) ...[
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.green,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Text(
+                                    '+$bonus BONUS',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${coins + bonus} coins total',
+                            style: const TextStyle(color: Colors.grey),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: () {
+                      // Implement in-app purchase
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Coming soon!')),
+                      );
+                    },
+                    child: Text(price),
                   ),
-                ],
+                ),
               ],
-            ),
-            subtitle: Text('${coins + bonus} coins total'),
-            trailing: FilledButton(
-              onPressed: () {
-                // Implement in-app purchase
-                ScaffoldMessenger.of(
-                  context,
-                ).showSnackBar(const SnackBar(content: Text('Coming soon!')));
-              },
-              child: Text(price),
             ),
           ),
         ).animate().fadeIn(delay: (100 * index).ms).slideX(begin: 0.2);
@@ -495,66 +533,68 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [Colors.purple.shade300, Colors.purple.shade700],
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [Colors.purple.shade300, Colors.purple.shade700],
+                  ),
+                  borderRadius: BorderRadius.circular(24),
                 ),
-                borderRadius: BorderRadius.circular(24),
-              ),
-              child: const Icon(Icons.diamond, size: 80, color: Colors.white),
-            ).animate().scale(duration: 600.ms, curve: Curves.elasticOut),
-            const SizedBox(height: 24),
-            const Text(
-              'SPELLIT PREMIUM',
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 2,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Unlock the full experience',
-              style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
-            ),
-            const SizedBox(height: 32),
-            _buildPremiumFeature(Icons.block, 'No Ads'),
-            _buildPremiumFeature(Icons.monetization_on, 'Double Daily Coins'),
-            _buildPremiumFeature(Icons.card_giftcard, 'Exclusive Power-ups'),
-            _buildPremiumFeature(Icons.palette, 'Premium Themes'),
-            _buildPremiumFeature(Icons.emoji_events, 'Special Badge'),
-            const SizedBox(height: 32),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(
-                onPressed: () {
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(const SnackBar(content: Text('Coming soon!')));
-                },
-                style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  backgroundColor: Colors.purple,
-                ),
-                child: const Text(
-                  '\$4.99/month',
-                  style: TextStyle(fontSize: 18),
+                child: const Icon(Icons.diamond, size: 80, color: Colors.white),
+              ).animate().scale(duration: 600.ms, curve: Curves.elasticOut),
+              const SizedBox(height: 24),
+              const Text(
+                'SPELLIT PREMIUM',
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 2,
                 ),
               ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Cancel anytime',
-              style: TextStyle(color: Colors.grey.shade500),
-            ),
-          ],
+              const SizedBox(height: 16),
+              Text(
+                'Unlock the full experience',
+                style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
+              ),
+              const SizedBox(height: 32),
+              _buildPremiumFeature(Icons.block, 'No Ads'),
+              _buildPremiumFeature(Icons.monetization_on, 'Double Daily Coins'),
+              _buildPremiumFeature(Icons.card_giftcard, 'Exclusive Power-ups'),
+              _buildPremiumFeature(Icons.palette, 'Premium Themes'),
+              _buildPremiumFeature(Icons.emoji_events, 'Special Badge'),
+              const SizedBox(height: 32),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: () {
+                    ScaffoldMessenger.of(
+                      context,
+                    ).showSnackBar(const SnackBar(content: Text('Coming soon!')));
+                  },
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    backgroundColor: Colors.purple,
+                  ),
+                  child: const Text(
+                    '\$4.99/month',
+                    style: TextStyle(fontSize: 18),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Cancel anytime',
+                style: TextStyle(color: Colors.grey.shade500),
+              ),
+            ],
+          ),
         ),
       ),
     );

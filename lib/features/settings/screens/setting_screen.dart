@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:spellit/core/setting_service.dart';
-import 'package:spellit/core/tutorial_service.dart';
 import 'package:spellit/features/tutorial/screens/tutorial_screen.dart';
 import 'package:spellit/features/settings/screens/legal_screen.dart';
 import '../../../core/audio_manager.dart';
@@ -63,6 +62,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       appBar: AppBar(title: const Text('Settings')),
       body: ListView(
         padding: const EdgeInsets.all(16),
+        physics: const BouncingScrollPhysics(),
         children: [
           // Sound Settings
           _buildSectionHeader('Sound'),
@@ -350,14 +350,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Future<void> _viewTutorial() async {
-    final tutorialService = ref.read(tutorialServiceProvider);
-    await tutorialService.resetTutorial();
-    if (!mounted) return; // ← State's mounted is correct here
-    Navigator.push(
+    // Show the tutorial as a replay without resetting the persisted
+    // completion flag up front — that would re-gate the user into /tutorial
+    // on next launch if they back out. Marking completion is the tutorial
+    // screen's own responsibility on _onTutorialComplete.
+    if (!mounted) return;
+    await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) =>
-            TutorialScreen(onComplete: () => Navigator.pop(context)),
+        builder: (_) => TutorialScreen(onComplete: () {}),
       ),
     );
   }

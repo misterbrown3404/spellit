@@ -1,209 +1,141 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_animate/flutter_animate.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../auth/auth_service.dart';
+import '../leaderboard_service.dart';
 
-class LeaderboardScreen extends ConsumerStatefulWidget {
+class LeaderboardScreen extends ConsumerWidget {
   const LeaderboardScreen({super.key});
 
   @override
-  ConsumerState<LeaderboardScreen> createState() => _LeaderboardScreenState();
-}
-
-class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen>
-    with SingleTickerProviderStateMixin {
-  late TabController _tabController;
-  String _currentFilter = 'all_time';
-
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: 3, vsync: this);
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Leaderboard'),
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: const [
-            Tab(text: 'Rating'),
-            Tab(text: 'Wins'),
-            Tab(text: 'Streak'),
-          ],
-        ),
-        actions: [
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.filter_list),
-            onSelected: (value) {
-              setState(() {
-                _currentFilter = value;
-              });
-            },
-            itemBuilder: (context) => [
-              const PopupMenuItem(value: 'all_time', child: Text('All Time')),
-              const PopupMenuItem(value: 'weekly', child: Text('This Week')),
-              const PopupMenuItem(value: 'daily', child: Text('Today')),
-            ],
-          ),
-        ],
-      ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          _buildLeaderboardList('eloRating'),
-          _buildLeaderboardList('totalWins'),
-          _buildLeaderboardList('longestStreak'),
-        ],
-      ),
-    );
-  }
-
-  DateTime? get _filterCutoff {
-    final now = DateTime.now();
-    return switch (_currentFilter) {
-      'weekly' => now.subtract(const Duration(days: 7)),
-      'daily' => DateTime(now.year, now.month, now.day),
-      _ => null, // 'all_time'
-    };
-  }
-
-  Widget _buildLeaderboardList(String orderByField) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(authStateProvider).value;
-    final cutoff = _filterCutoff;
+    final userId = user?.uid;
 
-    // Build query — apply date filter when not all_time
-    Query<Map<String, dynamic>> query = FirebaseFirestore.instance
-        .collection('users')
-        .orderBy(orderByField, descending: true)
-        .limit(100);
+    final leaderboardAsync = ref.watch(leaderboardWithUserProvider(userId));
 
-    if (cutoff != null) {
-      query = query.where(
-        'lastPlayedAt',
-        isGreaterThanOrEqualTo: Timestamp.fromDate(cutoff),
-      );
-    }
-
-    return StreamBuilder<QuerySnapshot>(
-      stream: query.snapshots(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-
-        if (snapshot.hasError) {
-          return Center(child: Text('Error: ${snapshot.error}'));
-        }
-
-        final docs = snapshot.data?.docs ?? [];
-        if (docs.isEmpty) {
-          return const Center(child: Text('No players yet'));
-        }
-
-        int? myRank;
-        for (int i = 0; i < docs.length; i++) {
-          if (docs[i].id == user?.uid) {
-            myRank = i + 1;
-            break;
-          }
-        }
-
-        return Column(
-          children: [
-            if (myRank != null)
-              Container(
-                margin: const EdgeInsets.all(16),
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Theme.of(context).colorScheme.primaryContainer,
-                      Theme.of(context).colorScheme.secondaryContainer,
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(16),
+    return Scaffold(
+      appBar: AppBar(title: const Text('Leaderboard')),
+      body: SingleChildScrollView(
+        child: leaderboardAsync.when(
+          loading: () => const Padding(
+            padding: EdgeInsets.all(24),
+            child: Center(child: CircularProgressIndicator()),
+          ),
+          error: (error, _) => Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Couldn\'t refresh leaderboard',
+                  style: TextStyle(color: Colors.grey),
                 ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 50,
-                      height: 50,
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.primary,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Center(
-                        child: Text(
-                          '#$myRank',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
+                const SizedBox(height: 16),
+                const Text('Top Players', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 16),
+                const Center(child: Text('No players yet')),
+              ],
+            ),
+          ),
+          data: (data) {
+            final topEntries = data.topEntries;
+            final currentUserEntry = data.currentUserEntry;
+            final currentUserInTop = data.currentUserInTop;
+            final hasAnyError = data.hasAnyError;
+
+            return Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (hasAnyError)
+                    const Text(
+                      'Couldn\'t refresh leaderboard',
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Top Players',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 16),
+
+                  if (topEntries.isEmpty && !hasAnyError)
+                    const Center(child: Text('No players yet'))
+                  else if (topEntries.isEmpty && hasAnyError)
+                    const Center(child: Text('No players yet'))
+                  else
+                    ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: topEntries.length,
+                      itemBuilder: (context, index) {
+                        final entry = topEntries[index];
+                        return _buildLeaderboardItem(
+                          context: context,
+                          rank: index + 1,
+                          name: entry.displayName,
+                          value: entry.value,
+                          orderByField: 'eloRating',
+                          isCurrentUser: entry.userId == userId,
+                          avatarUrl: entry.avatarUrl,
+                        );
+                      },
+                    ),
+
+                  if (!currentUserInTop && currentUserEntry != null && topEntries.isNotEmpty)
+                    const Divider(height: 32),
+                  if (!currentUserInTop && currentUserEntry != null && topEntries.isNotEmpty)
+                    Card(
+                      color: Theme.of(context).colorScheme.primaryContainer,
+                      child: ListTile(
+                        leading: const Icon(Icons.person_pin_circle, size: 40),
+                        title: Text(
+                          currentUserEntry.displayName,
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        subtitle: const Text('Your position'),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.stars,
+                              size: 18,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              '${currentUserEntry.value}',
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                            ),
+                          ],
                         ),
                       ),
                     ),
-                    const SizedBox(width: 16),
-                    const Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Your Rank',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 18,
-                            ),
-                          ),
-                          Text('Keep playing to climb higher!'),
-                        ],
+
+                  if (userId == null && topEntries.isNotEmpty)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 16),
+                      child: Center(
+                        child: Text(
+                          'Sign in to see your rank',
+                          style: TextStyle(color: Colors.grey),
+                        ),
                       ),
                     ),
-                    Icon(
-                      Icons.trending_up,
-                      color: Theme.of(context).colorScheme.primary,
-                      size: 32,
-                    ),
-                  ],
-                ),
-              ).animate().fadeIn().slideY(begin: -0.2),
-
-            Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                itemCount: docs.length,
-                itemBuilder: (context, index) {
-                  final doc = docs[index];
-                  final data = doc.data() as Map<String, dynamic>;
-                  final isCurrentUser = doc.id == user?.uid;
-
-                  return _buildLeaderboardItem(
-                    rank: index + 1,
-                    name: data['displayName'] ?? 'Player',
-                    value: data[orderByField] ?? 0,
-                    orderByField: orderByField,
-                    isCurrentUser: isCurrentUser,
-                    avatarUrl: data['avatarUrl'],
-                  ).animate().fadeIn(delay: (50 * index).ms).slideX(begin: 0.1);
-                },
+                ],
               ),
-            ),
-          ],
-        );
-      },
+            );
+          },
+        ),
+      ),
     );
   }
 
   Widget _buildLeaderboardItem({
+    required BuildContext context,
     required int rank,
     required String name,
     required int value,
@@ -234,9 +166,7 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen>
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
-      color: isCurrentUser
-          ? Theme.of(context).colorScheme.primaryContainer
-          : null,
+      color: isCurrentUser ? Theme.of(context).colorScheme.primaryContainer : null,
       child: ListTile(
         leading: SizedBox(
           width: 50,
@@ -250,10 +180,7 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen>
                   backgroundColor: Colors.grey.shade300,
                   child: Text(
                     '#$rank',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                    ),
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
                   ),
                 ),
             ],
@@ -261,10 +188,12 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen>
         ),
         title: Row(
           children: [
-            Text(
-              name,
-              style: TextStyle(
-                fontWeight: isCurrentUser ? FontWeight.bold : null,
+            Expanded(
+              child: Text(
+                name,
+                style: TextStyle(fontWeight: isCurrentUser ? FontWeight.bold : null),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
             if (isCurrentUser) ...[
@@ -277,11 +206,7 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen>
                 ),
                 child: const Text(
                   'YOU',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
                 ),
               ),
             ],
@@ -292,9 +217,13 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen>
           children: [
             Icon(valueIcon, size: 18, color: Colors.grey),
             const SizedBox(width: 4),
-            Text(
-              valueLabel,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            Flexible(
+              child: Text(
+                valueLabel,
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
           ],
         ),

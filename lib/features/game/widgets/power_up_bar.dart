@@ -18,55 +18,30 @@ class PowerUpBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          _buildPowerUpButton(
-            context: context,
-            type: PowerUpType.freeze,
-            icon: Icons.ac_unit,
-            color: Colors.lightBlue,
-            count: inventory['freeze'] ?? 0,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final available = constraints.maxWidth - 32; // 16px horizontal padding each side
+        const spacing = 8.0;
+        const count = 6;
+        final size = ((available - spacing * (count - 1)) / count).clamp(38.0, 56.0);
+
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Wrap(
+            alignment: WrapAlignment.center,
+            spacing: spacing,
+            runSpacing: spacing,
+            children: [
+              _buildPowerUpButton(context: context, type: PowerUpType.freeze, icon: Icons.ac_unit, color: Colors.lightBlue, count: inventory['freeze'] ?? 0, size: size),
+              _buildPowerUpButton(context: context, type: PowerUpType.reveal, icon: Icons.lightbulb, color: Colors.amber, count: inventory['reveal'] ?? 0, size: size),
+              _buildPowerUpButton(context: context, type: PowerUpType.shuffle, icon: Icons.shuffle, color: Colors.green, count: inventory['shuffle'] ?? 0, size: size),
+              _buildPowerUpButton(context: context, type: PowerUpType.doublePoints, icon: Icons.double_arrow, color: Colors.purple, count: inventory['double_points'] ?? 0, size: size),
+              _buildPowerUpButton(context: context, type: PowerUpType.bomb, icon: Icons.flash_on, color: Colors.red, count: inventory['bomb'] ?? 0, size: size),
+              _buildPowerUpButton(context: context, type: PowerUpType.shield, icon: Icons.shield, color: Colors.blueGrey, count: inventory['shield'] ?? 0, size: size),
+            ],
           ),
-          _buildPowerUpButton(
-            context: context,
-            type: PowerUpType.reveal,
-            icon: Icons.lightbulb,
-            color: Colors.amber,
-            count: inventory['reveal'] ?? 0,
-          ),
-          _buildPowerUpButton(
-            context: context,
-            type: PowerUpType.shuffle,
-            icon: Icons.shuffle,
-            color: Colors.green,
-            count: inventory['shuffle'] ?? 0,
-          ),
-          _buildPowerUpButton(
-            context: context,
-            type: PowerUpType.doublePoints,
-            icon: Icons.double_arrow,
-            color: Colors.purple,
-            count: inventory['double_points'] ?? 0,
-          ),
-          _buildPowerUpButton(
-            context: context,
-            type: PowerUpType.bomb,
-            icon: Icons.flash_on,
-            color: Colors.red,
-            count: inventory['bomb'] ?? 0,
-          ),
-          _buildPowerUpButton(
-            context: context,
-            type: PowerUpType.shield,
-            icon: Icons.shield,
-            color: Colors.blueGrey,
-            count: inventory['shield'] ?? 0,
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -76,6 +51,7 @@ class PowerUpBar extends StatelessWidget {
     required IconData icon,
     required Color color,
     required int count,
+    required double size,
   }) {
     final isOnCooldown = cooldowns?.contains(type) ?? false;
     final hasItem = count > 0;
@@ -85,8 +61,8 @@ class PowerUpBar extends StatelessWidget {
       onTap: canUse ? () => onPowerUpTap(type) : null,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        width: 56,
-        height: 56,
+        width: size,
+        height: size,
         decoration: BoxDecoration(
           color: canUse
               ? color.withValues(alpha: 0.2)
@@ -97,7 +73,7 @@ class PowerUpBar extends StatelessWidget {
         child: Stack(
           alignment: Alignment.center,
           children: [
-            Icon(icon, color: canUse ? color : Colors.grey, size: 28),
+            Icon(icon, color: canUse ? color : Colors.grey, size: (size * 0.5).clamp(18.0, 28.0)),
 
             // Count badge
             if (count > 0)

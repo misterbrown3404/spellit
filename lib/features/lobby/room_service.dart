@@ -1,15 +1,21 @@
 import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/di/firebase_providers.dart';
+import '../../core/network_utils.dart';
 import '../../models/room_model.dart';
 
-final roomServiceProvider = Provider((ref) => RoomService());
+final roomServiceProvider = Provider((ref) {
+  return RoomService(firestore: ref.watch(firebaseFirestoreProvider));
+});
 
 class RoomService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final CollectionReference _roomsRef = FirebaseFirestore.instance.collection(
-    'rooms',
-  );
+  RoomService({required FirebaseFirestore firestore})
+      : _firestore = firestore,
+        _roomsRef = firestore.collection('rooms');
+
+  final FirebaseFirestore _firestore;
+  final CollectionReference _roomsRef;
 
   // Generate unique room code — 8 chars gives ~2.8 trillion combos,
   // making collisions astronomically rare without a server round-trip.
@@ -82,7 +88,10 @@ class RoomService {
       isPublic: isPublic,
     );
 
-    await _roomsRef.doc(roomId).set(room.toFirestore());
+    await AppNetwork.execute<void>(
+      operationName: 'createRoom',
+      action: () => _roomsRef.doc(roomId).set(room.toFirestore()),
+    );
 
     return room;
   }
@@ -93,37 +102,70 @@ class RoomService {
     required String playerId,
   }) async {
     final normalized = roomCode.trim().toUpperCase();
-    final query = await _roomsRef
-        .where('roomCode', isEqualTo: normalized)
-        .limit(1)
-        .get();
+    final query = await AppNetwork.execute<QuerySnapshot>(
+      operationName: 'findRoomByCode',
+      action: () => _roomsRef
+          .where('roomCode', isEqualTo: normalized)
+          .limit(1)
+          .get(),
+    );
 
     if (query.docs.isEmpty) {
       throw Exception('Room not found');
     }
 
     final roomDoc = query.docs.first;
-    final room = RoomModel.fromFirestore(roomDoc);
+    return AppNetwork.execute<RoomModel>(
+      operationName: 'joinRoom',
+      action: () => _firestore.runTransaction((transaction) async {
+        final snapshot = await transaction.get(roomDoc.reference);
+        if (!snapshot.exists) {
+          throw Exception('Room not found');
+        }
 
-    if (room.status != RoomStatus.waiting) {
-      throw Exception('Game already started');
-    }
+        final room = RoomModel.fromFirestore(snapshot);
 
-    if (room.playerIds.length >= room.maxPlayers) {
-      throw Exception('Room is full');
-    }
+        if (room.status != RoomStatus.waiting) {
+          throw Exception('Game already started');
+        }
 
-    if (room.playerIds.contains(playerId)) {
-      return room; // Already in the room
-    }
+        if (room.playerIds.contains(playerId)) {
+          return room;
+        }
 
-    await roomDoc.reference.update({
-      'playerIds': FieldValue.arrayUnion([playerId]),
-      'scores.$playerId': 0,
-      'wordsFound.$playerId': [],
-    });
+        if (room.playerIds.length >= room.maxPlayers) {
+          throw Exception('Room is full');
+        }
 
-    return RoomModel.fromFirestore(await roomDoc.reference.get());
+        transaction.update(roomDoc.reference, {
+          'playerIds': FieldValue.arrayUnion([playerId]),
+          'scores.$playerId': 0,
+          'wordsFound.$playerId': <String>[],
+        });
+
+        return RoomModel(
+          roomId: room.roomId,
+          roomCode: room.roomCode,
+          hostId: room.hostId,
+          playerIds: [...room.playerIds, playerId],
+          scores: {...room.scores, playerId: 0},
+          wordsFound: {...room.wordsFound, playerId: <String>[]},
+          status: room.status,
+          gameMode: room.gameMode,
+          maxPlayers: room.maxPlayers,
+          wordLengthMin: room.wordLengthMin,
+          wordLengthMax: room.wordLengthMax,
+          timeLimit: room.timeLimit,
+          currentRound: room.currentRound,
+          totalRounds: room.totalRounds,
+          gridLetters: room.gridLetters,
+          createdAt: room.createdAt,
+          gameStartedAt: room.gameStartedAt,
+          activeEffects: room.activeEffects,
+          isPublic: room.isPublic,
+        );
+      }),
+    );
   }
 
   // Leave room
@@ -132,7 +174,10 @@ class RoomService {
     required String playerId,
   }) async {
     final roomDoc = _roomsRef.doc(roomId);
-    final snapshot = await roomDoc.get();
+    final snapshot = await AppNetwork.execute<DocumentSnapshot>(
+      operationName: 'loadRoomForLeave',
+      action: () => roomDoc.get(),
+    );
 
     if (!snapshot.exists) return;
 
@@ -141,27 +186,39 @@ class RoomService {
     if (room.hostId == playerId) {
       // Host leaving - delete room or transfer ownership
       if (room.playerIds.length <= 1) {
-        await roomDoc.delete();
+        await AppNetwork.execute<void>(
+          operationName: 'deleteEmptyRoom',
+          action: () => roomDoc.delete(),
+        );
       } else {
         final newHost = room.playerIds.firstWhere((id) => id != playerId);
-        await roomDoc.update({
-          'hostId': newHost,
-          'playerIds': FieldValue.arrayRemove([playerId]),
-        });
+        await AppNetwork.execute<void>(
+          operationName: 'transferRoomHost',
+          action: () => roomDoc.update({
+            'hostId': newHost,
+            'playerIds': FieldValue.arrayRemove([playerId]),
+          }),
+        );
       }
     } else {
-      await roomDoc.update({
-        'playerIds': FieldValue.arrayRemove([playerId]),
-      });
+      await AppNetwork.execute<void>(
+        operationName: 'leaveRoom',
+        action: () => roomDoc.update({
+          'playerIds': FieldValue.arrayRemove([playerId]),
+        }),
+      );
     }
   }
 
   // Start the game
   Future<void> startGame(String roomId) async {
-    await _roomsRef.doc(roomId).update({
-      'status': 'playing',
-      'gameStartedAt': FieldValue.serverTimestamp(),
-    });
+    await AppNetwork.execute<void>(
+      operationName: 'startGame',
+      action: () => _roomsRef.doc(roomId).update({
+        'status': 'playing',
+        'gameStartedAt': FieldValue.serverTimestamp(),
+      }),
+    );
   }
 
   // Submit word and update score
@@ -173,24 +230,26 @@ class RoomService {
   }) async {
     final roomDoc = _roomsRef.doc(roomId);
 
-    return await _firestore.runTransaction((transaction) async {
-      final snapshot = await transaction.get(roomDoc);
-      final room = RoomModel.fromFirestore(snapshot);
+    return AppNetwork.execute<bool>(
+      operationName: 'submitWord',
+      action: () => _firestore.runTransaction((transaction) async {
+        final snapshot = await transaction.get(roomDoc);
+        final room = RoomModel.fromFirestore(snapshot);
 
-      // Check if word already found by any player
-      for (var words in room.wordsFound.values) {
-        if (words.contains(word.toUpperCase())) {
-          return false; // Word already found
+        for (var words in room.wordsFound.values) {
+          if (words.contains(word.toUpperCase())) {
+            return false;
+          }
         }
-      }
 
-      transaction.update(roomDoc, {
-        'scores.$playerId': FieldValue.increment(score),
-        'wordsFound.$playerId': FieldValue.arrayUnion([word.toUpperCase()]),
-      });
+        transaction.update(roomDoc, {
+          'scores.$playerId': FieldValue.increment(score),
+          'wordsFound.$playerId': FieldValue.arrayUnion([word.toUpperCase()]),
+        });
 
-      return true;
-    });
+        return true;
+      }),
+    );
   }
 
   // Use power-up
@@ -203,13 +262,16 @@ class RoomService {
   }) async {
     final endTime = DateTime.now().add(Duration(seconds: duration));
 
-    await _roomsRef.doc(roomId).update({
-      'activeEffects.$targetPlayerId': {
-        'type': powerUpType,
-        'fromPlayer': odidUser,
-        'endTime': Timestamp.fromDate(endTime),
-      },
-    });
+    await AppNetwork.execute<void>(
+      operationName: 'usePowerUp',
+      action: () => _roomsRef.doc(roomId).update({
+        'activeEffects.$targetPlayerId': {
+          'type': powerUpType,
+          'fromPlayer': odidUser,
+          'endTime': Timestamp.fromDate(endTime),
+        },
+      }),
+    );
   }
 
   // Get room stream

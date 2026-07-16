@@ -1,16 +1,17 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:go_router/go_router.dart';
 import 'package:spellit/core/setting_service.dart';
 import 'package:spellit/features/auth/auth_service.dart';
 import 'package:spellit/features/daily/screens/daily_reward_screen.dart';
-import 'package:spellit/features/chat/screens/chat_screen.dart';
+//import 'package:spellit/features/chat/screens/chat_screen.dart';
 import 'package:spellit/features/game/screens/solo_game_screen.dart';
-import 'package:spellit/features/leaderboard/screens/leaderboard_screen.dart';
 import 'package:spellit/features/lobby/screens/lobby_screen.dart';
 import 'package:spellit/features/profile/screens/profile_screen.dart';
 import 'package:spellit/features/settings/screens/setting_screen.dart';
-import 'package:spellit/features/shop/screens/shop_screen.dart';
 import '../../../core/audio_manager.dart';
 
 class MainMenuScreen extends ConsumerStatefulWidget {
@@ -23,6 +24,15 @@ class MainMenuScreen extends ConsumerStatefulWidget {
 class _MainMenuScreenState extends ConsumerState<MainMenuScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _bgAnimController;
+
+  // Bottom nav route -> index map, kept in one place so both the
+  // GoRouter path lookup and the tap handler stay in sync.
+  static const List<String> _navPaths = [
+    '/daily',
+    '/shop',
+    '/leaderboard',
+    '/profile',
+  ];
 
   @override
   void initState() {
@@ -68,9 +78,10 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen>
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Row(
           children: [
-            Icon(Icons.card_giftcard, color: Colors.amber),
+            Icon(Icons.card_giftcard_rounded, color: Colors.amber),
             SizedBox(width: 8),
             Text('Daily Reward!'),
           ],
@@ -112,14 +123,18 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen>
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
+      extendBody: true, // let content flow behind the floating glass nav
       appBar: AppBar(
         automaticallyImplyLeading: false,
+        backgroundColor: Colors.transparent,
         flexibleSpace: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
               colors: [
                 colorScheme.primary,
-                colorScheme.primary.withValues(alpha: 0.8),
+                colorScheme.secondary.withValues(alpha: 0.85),
               ],
             ),
           ),
@@ -129,7 +144,7 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen>
         title: const Text(
           'SPELLIT',
           style: TextStyle(
-            fontWeight: FontWeight.bold,
+            fontWeight: FontWeight.w800,
             letterSpacing: 4,
             fontSize: 22,
           ),
@@ -143,45 +158,45 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen>
           const SizedBox(width: 4),
         ],
       ),
+      bottomNavigationBar: _buildFloatingNav(),
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              colorScheme.primary.withValues(alpha: 0.07),
-              colorScheme.secondary.withValues(alpha: 0.07),
+              colorScheme.primary.withValues(alpha: 0.08),
+              colorScheme.secondary.withValues(alpha: 0.08),
             ],
           ),
         ),
         child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Column(
-              children: [
-                const SizedBox(height: 12),
-
-                // Header with player info
-                _buildHeader(player),
-
-                const SizedBox(height: 20),
-
-                // Logo and title
-                _buildLogo(),
-
-                const SizedBox(height: 28),
-
-                // Main menu buttons
-                _buildMenuButtons(),
-
-                const Spacer(),
-
-                // Bottom navigation
-                _buildBottomNav(),
-
-                const SizedBox(height: 16),
-              ],
-            ),
+          bottom: false,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                padding: const EdgeInsets.only(
+                  bottom: 110,
+                ), // clears floating nav
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Column(
+                      children: [
+                        const SizedBox(height: 12),
+                        _buildHeader(player),
+                        const SizedBox(height: 20),
+                        _buildLogo(),
+                        const SizedBox(height: 28),
+                        _buildMenuButtons(),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
           ),
         ),
       ),
@@ -191,86 +206,112 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen>
   Widget _buildHeader(AsyncValue player) {
     return Row(
       children: [
-        player.when(
-          data: (p) => p != null
-              ? GestureDetector(
-                  onTap: () => _navigateTo(const ProfileScreen()),
-                  child: Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 20,
-                        backgroundColor: Theme.of(context).colorScheme.primary,
-                        child: Text(
-                          p.displayName.isNotEmpty
-                              ? p.displayName[0].toUpperCase()
-                              : '?',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            p.displayName,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
+        Expanded(
+          child: player.when(
+            data: (p) => p != null
+                ? GestureDetector(
+                    onTap: () => _navigateTo(const ProfileScreen()),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(2),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: LinearGradient(
+                              colors: [
+                                Theme.of(context).colorScheme.primary,
+                                Theme.of(context).colorScheme.secondary,
+                              ],
                             ),
                           ),
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.stars,
-                                size: 13,
-                                color: Colors.amber.shade700,
+                          child: CircleAvatar(
+                            radius: 19,
+                            backgroundColor: Theme.of(context).cardColor,
+                            child: Text(
+                              p.displayName.isNotEmpty
+                                  ? p.displayName[0].toUpperCase()
+                                  : '?',
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.primary,
+                                fontWeight: FontWeight.bold,
                               ),
-                              const SizedBox(width: 3),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Flexible(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
                               Text(
-                                '${p.eloRating}',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey.shade600,
+                                p.displayName,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
                                 ),
+                              ),
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.stars_rounded,
+                                    size: 13,
+                                    color: Colors.amber.shade700,
+                                  ),
+                                  const SizedBox(width: 3),
+                                  Flexible(
+                                    child: Text(
+                                      '${p.eloRating}',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey.shade500,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
-                        ],
-                      ),
-                    ],
-                  ),
-                )
-              : const SizedBox.shrink(),
-          loading: () => const SizedBox.shrink(),
-          error: (_, __) => const SizedBox.shrink(),
+                        ),
+                      ],
+                    ),
+                  )
+                : const SizedBox.shrink(),
+            loading: () => const SizedBox.shrink(),
+            error: (_, __) => const SizedBox.shrink(),
+          ),
         ),
 
-        const Spacer(),
+        const SizedBox(width: 8),
 
         player.when(
           data: (p) => p != null
-              ? Row(
-                  children: [
-                    _buildChip(
-                      icon: Icons.monetization_on,
-                      label: '${p.coins}',
-                      color: Colors.amber,
-                      bgColor: Colors.amber.withValues(alpha: 0.15),
-                    ),
-                    const SizedBox(width: 8),
-                    GestureDetector(
-                      onTap: () => _navigateTo(const DailyRewardScreen()),
-                      child: _buildChip(
-                        icon: Icons.local_fire_department,
-                        label: '${p.currentStreak}',
-                        color: Colors.orange,
-                        bgColor: Colors.orange.withValues(alpha: 0.15),
+              ? FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Row(
+                    children: [
+                      _buildChip(
+                        icon: Icons.monetization_on_rounded,
+                        label: '${p.coins}',
+                        color: Colors.amber,
+                        bgColor: Colors.amber.withValues(alpha: 0.15),
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 8),
+                      GestureDetector(
+                        onTap: () => _navigateTo(const DailyRewardScreen()),
+                        child: _buildChip(
+                          icon: Icons.local_fire_department_rounded,
+                          label: '${p.currentStreak}',
+                          color: Colors.orange,
+                          bgColor: Colors.orange.withValues(alpha: 0.15),
+                        ),
+                      ),
+                    ],
+                  ),
                 )
               : const SizedBox.shrink(),
           loading: () => const SizedBox.shrink(),
@@ -291,6 +332,7 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen>
       decoration: BoxDecoration(
         color: bgColor,
         borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -309,7 +351,6 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen>
   Widget _buildLogo() {
     return Row(
       children: [
-        // Compact animated logo
         Container(
               width: 72,
               height: 72,
@@ -322,14 +363,15 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen>
                     Theme.of(context).colorScheme.secondary,
                   ],
                 ),
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(22),
                 boxShadow: [
                   BoxShadow(
                     color: Theme.of(
                       context,
-                    ).colorScheme.primary.withValues(alpha: 0.3),
-                    blurRadius: 14,
-                    spreadRadius: 2,
+                    ).colorScheme.primary.withValues(alpha: 0.35),
+                    blurRadius: 18,
+                    spreadRadius: 1,
+                    offset: const Offset(0, 6),
                   ),
                 ],
               ),
@@ -348,26 +390,33 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen>
 
         const SizedBox(width: 16),
 
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'SPELLIT',
-              style: TextStyle(
-                fontSize: 34,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 5,
-              ),
-            ).animate().fadeIn(delay: 200.ms),
-            Text(
-              'Battle with words',
-              style: TextStyle(
-                fontSize: 13,
-                color: Colors.grey.shade500,
-                letterSpacing: 1.5,
-              ),
-            ).animate().fadeIn(delay: 350.ms),
-          ],
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: const Text(
+                  'SPELLIT',
+                  maxLines: 1,
+                  style: TextStyle(
+                    fontSize: 34,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 5,
+                  ),
+                ),
+              ).animate().fadeIn(delay: 200.ms),
+              Text(
+                'Battle with words',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Colors.grey.shade500,
+                  letterSpacing: 1.5,
+                ),
+              ).animate().fadeIn(delay: 350.ms),
+            ],
+          ),
         ),
       ],
     );
@@ -377,7 +426,7 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen>
     return Column(
       children: [
         _buildMenuButton(
-          icon: Icons.person,
+          icon: Icons.person_rounded,
           label: 'SOLO PLAY',
           subtitle: 'Practice your skills',
           color: Colors.green,
@@ -387,7 +436,7 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen>
         const SizedBox(height: 12),
 
         _buildMenuButton(
-          icon: Icons.people,
+          icon: Icons.people_alt_rounded,
           label: 'MULTIPLAYER',
           subtitle: 'Battle with friends',
           color: Colors.blue,
@@ -411,12 +460,12 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen>
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(18),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(18),
               border: Border.all(color: color.withValues(alpha: 0.25)),
             ),
             child: Row(
@@ -426,7 +475,7 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen>
                   height: 50,
                   decoration: BoxDecoration(
                     color: color.withValues(alpha: 0.18),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(14),
                   ),
                   child: Icon(icon, color: color, size: 26),
                 ),
@@ -480,7 +529,10 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen>
                     ],
                   ),
                 ),
-                Icon(Icons.chevron_right, color: color.withValues(alpha: 0.45)),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: color.withValues(alpha: 0.45),
+                ),
               ],
             ),
           ),
@@ -489,109 +541,181 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen>
     );
   }
 
-  Widget _buildBottomNav() {
+  // ---------------------------------------------------------------------
+  // Floating glassmorphic bottom nav with a sliding active-tab indicator.
+  // ---------------------------------------------------------------------
+  Widget _buildFloatingNav() {
     final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final currentPath = GoRouterState.of(context).matchedLocation;
+    final activeIndex = _navPaths.indexOf(currentPath);
 
     final items = [
       _NavItem(
         icon: Icons.card_giftcard_outlined,
-        activeIcon: Icons.card_giftcard,
+        activeIcon: Icons.card_giftcard_rounded,
         label: 'Daily',
-        screen: const DailyRewardScreen(),
+        path: '/daily',
       ),
       _NavItem(
         icon: Icons.store_outlined,
-        activeIcon: Icons.store,
+        activeIcon: Icons.store_rounded,
         label: 'Shop',
-        screen: const ShopScreen(),
+        path: '/shop',
       ),
       _NavItem(
         icon: Icons.leaderboard_outlined,
-        activeIcon: Icons.leaderboard,
+        activeIcon: Icons.leaderboard_rounded,
         label: 'Ranks',
-        screen: const LeaderboardScreen(),
+        path: '/leaderboard',
       ),
+      // _NavItem(
+      //   icon: Icons.chat_bubble_outline,
+      //   activeIcon: Icons.chat_bubble_rounded,
+      //   label: 'Chat',
+      //   path: '/chat',
+      // ),
       _NavItem(
-        icon: Icons.chat_bubble_outline,
-        activeIcon: Icons.chat_bubble,
-        label: 'Chat',
-        screen: const ChatScreen(),
-      ),
-      _NavItem(
-        icon: Icons.person_outline,
-        activeIcon: Icons.person,
+        icon: Icons.person_outline_rounded,
+        activeIcon: Icons.person_rounded,
         label: 'Profile',
-        screen: const ProfileScreen(),
+        path: '/profile',
       ),
     ];
 
-    return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-          decoration: BoxDecoration(
-            color: Theme.of(context).cardColor,
+    return Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          child: ClipRRect(
             borderRadius: BorderRadius.circular(28),
-            boxShadow: [
-              BoxShadow(
-                color: colorScheme.primary.withValues(alpha: 0.08),
-                blurRadius: 24,
-                offset: const Offset(0, 8),
-              ),
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.06),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: items.map((item) {
-              return Expanded(
-                child: InkWell(
-                  onTap: () {
-                    ref
-                        .read(audioManagerProvider)
-                        .playSfx(SoundEffect.buttonClick);
-                    _navigateTo(item.screen);
-                  },
-                  borderRadius: BorderRadius.circular(16),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 6),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+              child: Container(
+                height: 72,
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                decoration: BoxDecoration(
+                  color: (isDark ? Colors.black : Colors.white).withValues(
+                    alpha: 0.55,
+                  ),
+                  borderRadius: BorderRadius.circular(28),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: isDark ? 0.08 : 0.6),
+                    width: 1,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(
+                        alpha: isDark ? 0.4 : 0.12,
+                      ),
+                      blurRadius: 24,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
+                ),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final tabWidth = constraints.maxWidth / items.length;
+                    final showIndicator = activeIndex >= 0;
+
+                    return Stack(
+                      alignment: Alignment.centerLeft,
                       children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: colorScheme.primary.withValues(alpha: 0.0),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Icon(
-                            item.icon,
-                            size: 24,
-                            color: Colors.grey.shade500,
+                        // Sliding pill indicator behind the active tab.
+                        AnimatedPositioned(
+                          duration: const Duration(milliseconds: 320),
+                          curve: Curves.easeOutCubic,
+                          left: showIndicator ? tabWidth * activeIndex : 0,
+                          top: 8,
+                          bottom: 8,
+                          width: tabWidth,
+                          child: AnimatedOpacity(
+                            duration: const Duration(milliseconds: 200),
+                            opacity: showIndicator ? 1 : 0,
+                            child: Container(
+                              margin: const EdgeInsets.symmetric(horizontal: 6),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    colorScheme.primary,
+                                    colorScheme.secondary,
+                                  ],
+                                ),
+                                borderRadius: BorderRadius.circular(20),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: colorScheme.primary.withValues(
+                                      alpha: 0.35,
+                                    ),
+                                    blurRadius: 12,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
                         ),
-                        const SizedBox(height: 2),
-                        Text(
-                          item.label,
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: Colors.grey.shade500,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          maxLines: 1,
+
+                        // Tap targets + icons/labels.
+                        Row(
+                          children: items.asMap().entries.map((entry) {
+                            final index = entry.key;
+                            final item = entry.value;
+                            final isActive = index == activeIndex;
+
+                            return SizedBox(
+                              width: tabWidth,
+                              child: InkWell(
+                                onTap: () {
+                                  ref
+                                      .read(audioManagerProvider)
+                                      .playSfx(SoundEffect.buttonClick);
+                                  if (!isActive) context.push(item.path);
+                                },
+                                borderRadius: BorderRadius.circular(20),
+                                child: AnimatedDefaultTextStyle(
+                                  duration: const Duration(milliseconds: 200),
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: isActive
+                                        ? FontWeight.w700
+                                        : FontWeight.w500,
+                                    color: isActive
+                                        ? Colors.white
+                                        : (isDark
+                                              ? Colors.grey.shade400
+                                              : Colors.grey.shade600),
+                                  ),
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        isActive ? item.activeIcon : item.icon,
+                                        size: 22,
+                                        color: isActive
+                                            ? Colors.white
+                                            : (isDark
+                                                  ? Colors.grey.shade400
+                                                  : Colors.grey.shade600),
+                                      ),
+                                      const SizedBox(height: 3),
+                                      Text(item.label, maxLines: 1),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            );
+                          }).toList(),
                         ),
                       ],
-                    ),
-                  ),
+                    );
+                  },
                 ),
-              );
-            }).toList(),
+              ),
+            ),
           ),
         )
         .animate()
-        .fadeIn(delay: 800.ms)
+        .fadeIn(delay: 400.ms)
         .slideY(begin: 0.4, curve: Curves.easeOutBack);
   }
 
@@ -603,6 +727,9 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen>
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
       builder: (context) => StatefulBuilder(
         builder: (context, setModalState) => Padding(
           padding: const EdgeInsets.all(24),
@@ -653,10 +780,13 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen>
               SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
-                  icon: const Icon(Icons.play_arrow),
+                  icon: const Icon(Icons.play_arrow_rounded),
                   label: const Text('Start Game'),
                   style: FilledButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
                   ),
                   onPressed: () {
                     Navigator.pop(context);
@@ -683,12 +813,12 @@ class _NavItem {
   final IconData icon;
   final IconData activeIcon;
   final String label;
-  final Widget screen;
+  final String path;
 
   const _NavItem({
     required this.icon,
     required this.activeIcon,
     required this.label,
-    required this.screen,
+    required this.path,
   });
 }

@@ -1,0 +1,195 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------------------------------------------------------------------
+    // Helpers
+    // ---------------------------------------------------------------------
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+
+    // A field is unchanged between the existing doc and the incoming write.
+    function unchanged(field) {
+      return request.resource.data[field] == resource.data[field];
+    }
+
+    function isNonEmptyString(value, maxLen) {
+      return value is string && value.size() > 0 && value.size() <= maxLen;
+    }
+
+    // ---------------------------------------------------------------------
+    // Users
+    // ---------------------------------------------------------------------
+    match /users/{userId} {
+      // On create the user can only create their own profile document.
+      allow create: if isOwner(userId)
+        && request.resource.data.displayName is string
+        && request.resource.data.displayName.size() <= 40;
+
+      // Read own profile. (Leaderboard/public profile reads can be widened
+      // later behind a dedicated denormalized collection.)
+      allow read: if isOwner(userId);
+
+      // Update own profile only. Immutable identity fields are protected.
+      // Economy fields are validated to be non-negative integers; fully
+      // trusted economy mutations still belong in Cloud Functions.
+      allow update: if isOwner(userId)
+        && (!('email' in request.resource.data) || unchanged('email'))
+        && (!('odid' in request.resource.data) || unchanged('odid'))
+        && (!('displayName' in request.resource.data)
+              || (request.resource.data.displayName is string
+                    && request.resource.data.displayName.size() <= 40))
+        && (!('coins' in request.resource.data)
+              || (request.resource.data.coins is int
+                    && request.resource.data.coins >= 0))
+        && (!('gems' in request.resource.data)
+              || (request.resource.data.gems is int
+                    && request.resource.data.gems >= 0));
+
+      allow delete: if isOwner(userId);
+
+      match /achievements/{achievementId} {
+        allow read, create, update: if isOwner(userId);
+        allow delete: if false;
+      }
+    }
+
+    // ---------------------------------------------------------------------
+    // Rooms (multiplayer game sessions)
+    // NOTE: authoritative scoring/end-game should move to Cloud Functions
+    // for competitive play. These rules add membership + shape hardening.
+    // ---------------------------------------------------------------------
+    match /rooms/{roomId} {
+      allow create: if signedIn()
+        && request.resource.data.hostId == request.auth.uid
+        && request.auth.uid in request.resource.data.playerIds
+        && request.resource.data.playerIds.size() == 1
+        && request.resource.data.status == 'waiting'
+        && isNonEmptyString(request.resource.data.roomCode, 12)
+        && request.resource.data.maxPlayers is int
+        && request.resource.data.maxPlayers >= 2
+        && request.resource.data.maxPlayers <= 8;
+
+      allow read: if signedIn()
+        && (resource.data.isPublic == true
+              || request.auth.uid in resource.data.playerIds);
+
+      allow update: if signedIn() && (
+        // Existing member mutating game state.
+        (
+          request.auth.uid in resource.data.playerIds
+          && unchanged('roomCode')
+          && unchanged('createdAt')
+          // Host id can only change if the current host initiates it (transfer).
+          && (unchanged('hostId') || request.auth.uid == resource.data.hostId)
+        )
+        ||
+        // A new player joining an open, waiting, non-full room.
+        (
+          !(request.auth.uid in resource.data.playerIds)
+          && request.auth.uid in request.resource.data.playerIds
+          && resource.data.status == 'waiting'
+          && resource.data.playerIds.size() < resource.data.maxPlayers
+          && unchanged('hostId')
+          && unchanged('roomCode')
+          && unchanged('createdAt')
+          && unchanged('maxPlayers')
+        )
+      );
+
+      allow delete: if signedIn()
+        && request.auth.uid == resource.data.hostId;
+    }
+
+    // ---------------------------------------------------------------------
+    // Leaderboard (denormalized, public)
+    // Holds only ranking fields (no PII). Anyone signed in can read; a user
+    // may only write their own entry. `users` keeps owner-only read so PII
+    // (email, coins, inventory) stays private.
+    // ---------------------------------------------------------------------
+    match /leaderboard/{userId} {
+      allow read: if signedIn();
+      allow write: if signedIn()
+        && request.auth.uid == userId
+        && isNonEmptyString(request.resource.data.displayName, 50)
+        && request.resource.data.eloRating is int
+        && request.resource.data.totalWins is int
+        && request.resource.data.longestStreak is int;
+    }
+
+    // ---------------------------------------------------------------------
+    // Notifications
+    // A user may only create/read/update/delete notifications addressed to
+    // themselves. Cross-user notifications must be sent from a trusted
+    // backend (Cloud Functions) to prevent spam/abuse.
+    // ---------------------------------------------------------------------
+    match /notifications/{notificationId} {
+      allow create: if signedIn()
+        && request.resource.data.userId == request.auth.uid
+        && isNonEmptyString(request.resource.data.type, 40)
+        && isNonEmptyString(request.resource.data.title, 120)
+        && request.resource.data.body is string
+        && request.resource.data.body.size() <= 500
+        && request.resource.data.read == false;
+
+      allow read, update, delete: if signedIn()
+        && resource.data.userId == request.auth.uid;
+    }
+
+    // ---------------------------------------------------------------------
+    // Global chat
+    // Readable by any signed-in user. Messages are immutable once created
+    // and are validated for ownership and length. senderName is NOT trusted:
+    // the client may send it for display convenience, but the server-side
+    // display name (resolved by a Cloud Function) is authoritative.
+    // ---------------------------------------------------------------------
+    match /global_chats/{messageId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.senderId == request.auth.uid
+        && isNonEmptyString(request.resource.data.text, 500);
+      allow update, delete: if false;
+    }
+
+    // ---------------------------------------------------------------------
+    // Private chats (1:1)
+    // Only participants can read/write the conversation and its messages.
+    // ---------------------------------------------------------------------
+    match /private_chats/{chatId} {
+      allow read: if signedIn()
+        && request.auth.uid in resource.data.participants;
+      allow create: if signedIn()
+        && request.auth.uid in request.resource.data.participants
+        && request.resource.data.participants.size() == 2;
+      allow update: if signedIn()
+        && request.auth.uid in resource.data.participants
+        && request.resource.data.participants == resource.data.participants;
+      allow delete: if false;
+
+      match /messages/{messageId} {
+        allow read: if signedIn()
+          && request.auth.uid in
+              get(/databases/$(database)/documents/private_chats/$(chatId)).data.participants;
+        allow create: if signedIn()
+          && request.resource.data.senderId == request.auth.uid
+          && isNonEmptyString(request.resource.data.text, 500)
+          && request.auth.uid in
+              get(/databases/$(database)/documents/private_chats/$(chatId)).data.participants;
+        allow update, delete: if false;
+      }
+    }
+
+    // ---------------------------------------------------------------------
+    // Default deny
+    // ---------------------------------------------------------------------
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -523,100 +523,102 @@ class _SoloGameScreenState extends ConsumerState<SoloGameScreen>
           ),
         ],
       ),
-      body: Column(
-        children: [
-          // Words found counter
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Words: ${wordsFound.length}',
-                  style: Theme.of(context).textTheme.titleMedium,
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          return SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: constraints.maxHeight),
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 8,
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Words: ${wordsFound.length}',
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                          if (wordsFound.isNotEmpty)
+                            TextButton.icon(
+                              icon: const Icon(Icons.list, size: 18),
+                              label: const Text('View'),
+                              onPressed: () => _showWordsList(),
+                            ),
+                        ],
+                      ),
+                    ).animate().fadeIn(),
+                    const SizedBox(height: 12),
+                    WordDisplay(
+                      currentWord: currentWord,
+                      isValid: isWordValid,
+                      isChecking: isCheckingWord,
+                      potentialScore: potentialScore,
+                    ).animate().fadeIn(delay: 200.ms),
+                    const SizedBox(height: 16),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: LetterGrid(
+                        letters: gridLetters,
+                        gridSize: gridSize,
+                        selectedIndices: selectedIndices,
+                        multipliers: letterMultipliers,
+                        onLetterTap: _onLetterTap,
+                        onSwipeComplete: _onSwipeComplete,
+                        isEnabled: !isGameOver,
+                      ),
+                    ).animate().fadeIn(delay: 400.ms).scale(begin: const Offset(0.95, 0.95)),
+                    const SizedBox(height: 16),
+                    PowerUpBar(
+                      inventory: inventory,
+                      onPowerUpTap: _usePowerUp,
+                      isEnabled: !isGameOver,
+                    ).animate().fadeIn(delay: 600.ms).slideY(begin: 0.3),
+                    const SizedBox(height: 16),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: currentWord.isNotEmpty ? _clearSelection : null,
+                              icon: const Icon(Icons.backspace),
+                              label: const Text('Clear'),
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            flex: 2,
+                            child: FilledButton.icon(
+                              onPressed: isWordValid ? _submitWord : null,
+                              icon: const Icon(Icons.check),
+                              label: Text(
+                                isWordValid ? 'Submit (+$potentialScore)' : 'Submit',
+                              ),
+                              style: FilledButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                backgroundColor: isWordValid ? Colors.green : null,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ).animate().fadeIn(delay: 800.ms),
+                  ],
                 ),
-                if (wordsFound.isNotEmpty)
-                  TextButton.icon(
-                    icon: const Icon(Icons.list, size: 18),
-                    label: const Text('View'),
-                    onPressed: () => _showWordsList(),
-                  ),
-              ],
+              ),
             ),
-          ).animate().fadeIn(),
-
-          const Spacer(),
-
-          // Current word display
-          WordDisplay(
-            currentWord: currentWord,
-            isValid: isWordValid,
-            isChecking: isCheckingWord,
-            potentialScore: potentialScore,
-          ).animate().fadeIn(delay: 200.ms),
-
-          const SizedBox(height: 20),
-
-          // Letter grid
-          Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: LetterGrid(
-                  letters: gridLetters,
-                  gridSize: gridSize,
-                  selectedIndices: selectedIndices,
-                  multipliers: letterMultipliers,
-                  onLetterTap: _onLetterTap,
-                  onSwipeComplete: _onSwipeComplete,
-                  isEnabled: !isGameOver,
-                ),
-              )
-              .animate()
-              .fadeIn(delay: 400.ms)
-              .scale(begin: const Offset(0.9, 0.9)),
-
-          const Spacer(),
-
-          // Power-ups
-          PowerUpBar(
-            inventory: inventory,
-            onPowerUpTap: _usePowerUp,
-            isEnabled: !isGameOver,
-          ).animate().fadeIn(delay: 600.ms).slideY(begin: 0.3),
-
-          // Action buttons
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: currentWord.isNotEmpty ? _clearSelection : null,
-                    icon: const Icon(Icons.backspace),
-                    label: const Text('Clear'),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  flex: 2,
-                  child: FilledButton.icon(
-                    onPressed: isWordValid ? _submitWord : null,
-                    icon: const Icon(Icons.check),
-                    label: Text(
-                      isWordValid ? 'Submit (+$potentialScore)' : 'Submit',
-                    ),
-                    style: FilledButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      backgroundColor: isWordValid ? Colors.green : null,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ).animate().fadeIn(delay: 800.ms),
-        ],
+          );
+        },
       ),
     );
   }

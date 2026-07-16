@@ -12,6 +12,7 @@ import '../../../core/dictionary_service.dart';
 import '../../../models/room_model.dart';
 import '../../../models/power_up_model.dart';
 import '../../auth/auth_service.dart';
+import '../../leaderboard/leaderboard_service.dart';
 import '../../lobby/room_service.dart';
 import '../widgets/letter_grid.dart';
 import '../widgets/game_timer.dart';
@@ -583,6 +584,10 @@ class _MultiplayerGameScreenState extends ConsumerState<MultiplayerGameScreen>
     final myScore = room.scores[user.uid] ?? 0;
 
     try {
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
       await FirebaseFirestore.instance
           .collection('users')
           .doc(user.uid)
@@ -593,6 +598,18 @@ class _MultiplayerGameScreenState extends ConsumerState<MultiplayerGameScreen>
             'coins': FieldValue.increment(myScore),
           });
       debugPrint('Successfully updated own stats for ${user.uid}');
+
+      final data = userDoc.data();
+      if (data != null) {
+        ref.read(leaderboardServiceProvider).syncEntry(
+          userId: user.uid,
+          displayName: data['displayName'] as String? ?? 'Player',
+          eloRating: (data['eloRating'] as int? ?? 1000) + (isWinner ? 25 : -10),
+          totalWins: (data['totalWins'] as int? ?? 0) + (isWinner ? 1 : 0),
+          longestStreak: data['longestStreak'] as int? ?? 0,
+          avatarUrl: data['avatarUrl'] as String? ?? '',
+        );
+      }
     } catch (e) {
       debugPrint('Failed to update own stats: $e');
     }
